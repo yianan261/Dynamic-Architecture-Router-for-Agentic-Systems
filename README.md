@@ -50,12 +50,16 @@ DynamicRoutingAgents/
 ├── requirements.txt
 ├── pyproject.toml
 ├── run_examples.py              # Example execution script
+├── evaluate_regret.py           # Oracle Evaluation Harness (Routing Regret)
+├── scripts/
+│   └── setup_pcab.py            # Initialize PCAB benchmark database
 └── src/
     └── dynamic_routing/
         ├── __init__.py
         ├── state.py             # RouterState, CentralizedState schemas
         ├── router.py            # Main Dynamic Router graph
-        └── centralized_mas.py  # Hub-and-spoke MAS with mock APIs
+        ├── pcab.py               # PCAB database schema & agent tools
+        └── centralized_mas.py   # Hub-and-spoke MAS (PCAB-backed)
 ```
 
 ## Installation
@@ -66,6 +70,9 @@ pip install -r requirements.txt
 
 # Or install in editable mode
 pip install -e .
+
+# Initialize the PCAB benchmark database (required for Centralized MAS)
+python scripts/setup_pcab.py
 ```
 
 ## Usage
@@ -77,6 +84,22 @@ python run_examples.py
 ```
 
 This runs four test cases demonstrating routing to each topology.
+
+### Run Oracle Evaluation Harness (Routing Regret)
+
+```bash
+python evaluate_regret.py
+```
+
+Demonstrates how Routing Regret is calculated vs. the Oracle Baseline across SAS, Centralized MAS, and Decentralized MAS.
+
+### Run Oracle Evaluation Harness (Routing Regret)
+
+```bash
+python evaluate_regret.py
+```
+
+Demonstrates how Routing Regret is calculated vs. the Oracle Baseline across SAS, Centralized MAS, and Decentralized MAS.
 
 ### Programmatic Usage
 
@@ -98,15 +121,15 @@ The skeleton uses keyword-based metadata extraction. Example behaviors:
 
 In production, replace the mock logic in `dynamic_router_node` with an LLM call (e.g., Mistral 7B) enforcing structured JSON output.
 
-## Centralized MAS: Personalized Context Sandbox
+## Centralized MAS: Personalized Context Assembly Benchmark (PCAB)
 
-The Centralized MAS implements a hub-and-spoke topology with mock APIs:
+The Centralized MAS implements a hub-and-spoke topology backed by the PCAB SQLite database:
 
 - **Supervisor**: Delegates to workers and synthesizes outputs; acts as validation bottleneck
-- **Workers**: Calendar, Maps, Drive agents (cannot communicate directly)
+- **Workers**: Calendar, Drive, Commute (Maps), Contacts agents query `pcab_environment.db`; cannot communicate directly
 - **State**: `Annotated[list, operator.add]` for `aggregated_context`—workers append results without passing full history
 
-Example task: *"Cross-reference my calendar with maps for upstate NY hiking and check my drive notes."* → Supervisor delegates to Calendar → Maps → Drive → synthesizes personalized context.
+Example task: *"I need to meet with Dr. Hong Man on March 16th after my Deep Learning lecture. Where should I go, and how long will it take to walk there?"* → Supervisor delegates to Contacts → Calendar → Commute → synthesizes personalized context with gold trajectory API calls.
 
 ## Technology Stack (Proposal)
 
@@ -117,12 +140,14 @@ Example task: *"Cross-reference my calendar with maps for upstate NY hiking and 
 ## Evaluation (Proposal)
 
 - **Environment A**: WorkBench dataset (30 stratified tasks) — validate SAS routing for tool-heavy sequential tasks
-- **Environment B**: Personalized Context Sandbox — validate Centralized MAS for parallelizable aggregation
+- **Environment B**: Personalized Context Assembly Benchmark (PCAB) — validate Centralized MAS for parallelizable aggregation with defined query families (Sequential, Parallel, Exploratory) and gold trajectories
 
 ## Metrics (Proposal)
 
+- **Routing Regret (vs. Oracle Baseline)** — primary optimization objective; quantifies penalty for suboptimal routing
 - Task Success Rate (accuracy)
 - Total Token Efficiency
+- Per-step Latency & End-to-end Wall-clock Time
 - Coordination Overhead (% tokens on inter-agent communication)
 - Error Amplification Rate (A_e)
 

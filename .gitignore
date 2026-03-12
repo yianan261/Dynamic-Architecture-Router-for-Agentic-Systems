@@ -23,3 +23,6 @@ build/
 # Environment
 .env
 .env.local
+
+# PCAB benchmark database (generated)
+pcab_environment.db

@@ -50,8 +50,8 @@ def main() -> None:
     print(f"Routed To: {result_3['selected_architecture']}")
     print(f"Response: {result_3['final_response']}")
 
-    # Test Case 4: Centralized MAS with full Sandbox (Calendar + Maps + Drive)
-    print("\n--- Test 4: Centralized MAS (Personalized Context Sandbox) ---")
+    # Test Case 4: Centralized MAS with PCAB (Calendar + Drive + Commute)
+    print("\n--- Test 4: Centralized MAS (Personalized Context Assembly Benchmark) ---")
     test_4 = {
         "user_query": "Cross-reference my calendar availability with maps for "
         "upstate NY hiking and check my drive notes."
