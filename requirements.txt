@@ -1,0 +1,9 @@
+# Dynamic Architecture Router for Agentic Systems
+# LangGraph for orchestration
+langgraph>=0.2.0
+langchain>=0.3.0
+
+# Optional: for LLM integration (uncomment when deploying Mistral/Llama)
+# langchain-openai
+# langchain-google-genai
+# vllm  # for local inference with PagedAttention
