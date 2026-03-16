@@ -7,69 +7,28 @@ Workers cannot communicate directly—they report to the Supervisor, which acts
 as a validation bottleneck to restrict error amplification (~4.4x).
 """
 
-import re
 from langgraph.graph import END, StateGraph
 
+# Map required_tools registry names to worker agent names
+_REQUIRED_TOOL_TO_WORKER: dict[str, str] = {
+    "get_contact_preferences": "contacts_agent",
+    "get_calendar_events": "calendar_agent",
+    "search_drive_docs": "drive_agent",
+    "estimate_commute": "commute_agent",
+}
+
 from dynamic_routing.pcab import (
-    get_calendar_events,
-    search_drive_docs,
     estimate_commute,
+    extract_commute_pair,
+    extract_contact_name,
+    extract_date,
+    extract_drive_query,
+    get_calendar_events,
     get_contact_preferences,
     get_db_path,
+    search_drive_docs,
 )
 from dynamic_routing.state import CentralizedState
-
-
-# --- Parameter extraction from natural language task ---
-
-
-def _extract_date(task: str) -> str:
-    """Extract date from task; default to benchmark date 2026-03-16."""
-    # YYYY-MM-DD
-    m = re.search(r"(\d{4})-(\d{2})-(\d{2})", task)
-    if m:
-        return f"{m.group(1)}-{m.group(2)}-{m.group(3)}"
-    # March 16, Mar 16, 3/16
-    if "march 16" in task or "mar 16" in task or "3/16" in task:
-        return "2026-03-16"
-    return "2026-03-16"
-
-
-def _extract_drive_query(task: str) -> str:
-    """Extract search terms for Drive from task."""
-    task_lower = task.lower()
-    if "capstone" in task_lower or "proposal" in task_lower:
-        return "Capstone"
-    if "advisor" in task_lower or "meeting prep" in task_lower:
-        return "Advisor"
-    if "notes" in task_lower:
-        return "notes"
-    return "Capstone"
-
-
-def _extract_commute_pair(task: str) -> tuple[str, str] | None:
-    """Extract origin/destination for commute. Returns (origin, dest) or None."""
-    task_lower = task.lower()
-    if "commute" not in task_lower and "walk" not in task_lower and "travel" not in task_lower:
-        return None
-    # Common PCAB locations
-    locs = ["babbio center", "gateway north", "library", "hoboken coffee"]
-    found = [loc for loc in locs if loc in task_lower]
-    if len(found) >= 2:
-        return (found[0].title(), found[1].title())
-    # Default: lecture to advisor meeting
-    if "advisor" in task_lower or "dr." in task_lower:
-        return ("Babbio Center", "Gateway North")
-    return ("Babbio Center", "Gateway North")
-
-
-def _extract_contact_name(task: str) -> str | None:
-    """Extract contact name from task."""
-    if "dr. hong man" in task.lower() or "dr hong man" in task.lower():
-        return "Dr. Hong Man"
-    if "advisor" in task.lower() and "dr" not in task.lower():
-        return "Dr. Hong Man"
-    return None
 
 
 # --- Worker Agents (PCAB-backed) ---
@@ -78,7 +37,8 @@ def _extract_contact_name(task: str) -> str | None:
 def calendar_agent(state: CentralizedState) -> dict:
     """Worker: fetches calendar events from PCAB."""
     task = state.get("task", "")
-    date = _extract_date(task)
+    overrides = state.get("extraction_overrides") or {}
+    date = extract_date(task, overrides)
     result = get_calendar_events(date, get_db_path())
     return {"aggregated_context": [f"[CALENDAR]{result}"]}
 
@@ -86,7 +46,8 @@ def calendar_agent(state: CentralizedState) -> dict:
 def drive_agent(state: CentralizedState) -> dict:
     """Worker: searches Drive docs from PCAB."""
     task = state.get("task", "")
-    query = _extract_drive_query(task)
+    overrides = state.get("extraction_overrides") or {}
+    query = extract_drive_query(task, overrides)
     result = search_drive_docs(query, get_db_path())
     return {"aggregated_context": [f"[DRIVE]{result}"]}
 
@@ -94,7 +55,8 @@ def drive_agent(state: CentralizedState) -> dict:
 def commute_agent(state: CentralizedState) -> dict:
     """Worker: estimates commute between locations from PCAB Maps/Commute data."""
     task = state.get("task", "")
-    pair = _extract_commute_pair(task)
+    overrides = state.get("extraction_overrides") or {}
+    pair = extract_commute_pair(task, overrides)
     if pair is None:
         result = '{"status": "skipped", "message": "No commute query detected."}'
     else:
@@ -105,7 +67,8 @@ def commute_agent(state: CentralizedState) -> dict:
 def contacts_agent(state: CentralizedState) -> dict:
     """Worker: fetches contact preferences from PCAB."""
     task = state.get("task", "")
-    name = _extract_contact_name(task)
+    overrides = state.get("extraction_overrides") or {}
+    name = extract_contact_name(task, overrides)
     if name is None:
         result = '{"status": "skipped", "message": "No contact query detected."}'
     else:
@@ -120,10 +83,13 @@ def supervisor_node(state: CentralizedState) -> dict:
     """
     Supervisor analyzes aggregated context and decides which worker
     to dispatch next, or if synthesis is complete.
+    When required_tools is provided (e.g. from PCAB task registry), uses that
+    instead of hard-coded keyword matching.
     """
     context = state.get("aggregated_context", [])
     task = state["task"].lower()
     context_str = str(context).lower()
+    required_tools = state.get("required_tools") or []
 
     # Check which PCAB sources have been queried
     has_calendar = "[calendar]" in context_str
@@ -131,6 +97,23 @@ def supervisor_node(state: CentralizedState) -> dict:
     has_commute = "[commute]" in context_str
     has_contacts = "[contacts]" in context_str
 
+    # When task registry provides required_tools, use data-driven dispatch
+    if required_tools:
+        for tool_name in required_tools:
+            worker = _REQUIRED_TOOL_TO_WORKER.get(tool_name)
+            if not worker:
+                continue
+            # Workers emit e.g. "[CALENDAR]{result}"; context_str is lowercased
+            context_key = f"[{worker.replace('_agent', '').lower()}]"
+            if context_key not in context_str:
+                return {"next_action": worker}
+        synthesis = (
+            f"Synthesis Complete. Aggregated {len(context)} sources "
+            "to build personalized context."
+        )
+        return {"next_action": "FINISH", "final_synthesis": synthesis}
+
+    # Fallback: keyword-based worker selection
     if not has_calendar and ("calendar" in task or "schedule" in task or "event" in task or "meeting" in task):
         next_worker = "calendar_agent"
     elif not has_drive and ("drive" in task or "notes" in task or "doc" in task or "capstone" in task):
