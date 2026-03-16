@@ -58,7 +58,9 @@ DynamicRoutingAgents/
         ├── __init__.py
         ├── state.py             # RouterState, CentralizedState schemas
         ├── router.py            # Main Dynamic Router graph
-        ├── pcab.py               # PCAB database schema & agent tools
+        ├── pcab.py              # PCAB database schema & agent tools
+        ├── single_agent.py      # SAS: ReAct loop, unified memory
+        ├── vllm_integration.py  # Mistral-7B classifier via vLLM
         └── centralized_mas.py   # Hub-and-spoke MAS (PCAB-backed)
 ```
 
@@ -111,6 +113,10 @@ print(result["selected_architecture"])  # Centralized MAS
 print(result["final_response"])
 ```
 
+### Single-Agent System (SAS): ReAct Loop
+
+The SAS uses a ReAct (Reason + Act) loop with unified memory: every thought and tool result is appended to a single message stream. It invokes PCAB tools sequentially (contact → calendar → drive → commute as needed) and is optimal for deep sequential tasks with strict dependencies.
+
 ### Routing by Query Patterns
 
 The skeleton uses keyword-based metadata extraction. Example behaviors:
@@ -119,7 +125,16 @@ The skeleton uses keyword-based metadata extraction. Example behaviors:
 - **"step-by-step" / "complex workflow"** → Deep sequential (depth 8, tools 14) → SAS
 - **Default** → Moderate parallelism → Decentralized MAS
 
-In production, replace the mock logic in `dynamic_router_node` with an LLM call (e.g., Mistral 7B) enforcing structured JSON output.
+### LLM-powered Routing (vLLM)
+
+The router uses Mistral-7B via vLLM for classification. Start the vLLM server:
+
+```bash
+python -m vllm.entrypoints.openai.api_server \
+  --model mistralai/Mistral-7B-Instruct-v0.2 --port 8000
+```
+
+Then set `USE_LLM_ROUTER=true` (default when unset). If vLLM is unavailable, the router falls back to keyword heuristics.
 
 ## Centralized MAS: Personalized Context Assembly Benchmark (PCAB)
 
