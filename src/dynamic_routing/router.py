@@ -8,7 +8,9 @@ from typing import Literal
 from langgraph.graph import END, StateGraph
 
 from dynamic_routing.centralized_mas import centralized_mas_app
+from dynamic_routing.single_agent import single_agent_app
 from dynamic_routing.state import RouterState
+from dynamic_routing.vllm_integration import predict_routing_metadata
 
 
 # --- Dynamic Router Node (Meta-Agent) ---
@@ -16,39 +18,14 @@ from dynamic_routing.state import RouterState
 
 def dynamic_router_node(state: RouterState) -> dict:
     """
-    Analyzes the prompt and outputs structural metadata.
-    In production: Mistral-7B classifier enforcing JSON output.
+    Analyzes the prompt and outputs structural metadata using the Mistral-7B
+    classifier via vLLM. Falls back to keyword heuristics if vLLM is unavailable.
     """
-    query = state.get("user_query", "").lower()
-
-    # Multiple data sources (Calendar, Maps, Drive) → parallel aggregation
-    sources = sum(1 for s in ("calendar", "maps", "drive") if s in query)
-
-    if "simultaneously" in query or "aggregate" in query or sources >= 2:
-        # e.g., Fetching Drive, Calendar, and Maps data at the same time
-        return {
-            "estimated_sequential_depth": 2,
-            "parallelization_factor": 0.9,
-            "estimated_tool_count": 5,
-        }
-    elif "step-by-step" in query or "complex workflow" in query:
-        # e.g., Deep reasoning task requiring heavy tool use
-        return {
-            "estimated_sequential_depth": 8,
-            "parallelization_factor": 0.1,
-            "estimated_tool_count": 14,
-        }
-    else:
-        # Open-ended exploration
-        return {
-            "estimated_sequential_depth": 3,
-            "parallelization_factor": 0.4,
-            "estimated_tool_count": 3,
-        }
+    query = state.get("user_query", "")
+    return predict_routing_metadata(query)
 
 
 # --- Routing Logic (Conditional Edge) ---
-
 
 def route_task(
     state: RouterState,
@@ -79,25 +56,44 @@ def route_task(
 
 
 def single_agent_node(state: RouterState) -> dict:
-    """Single-Agent System: unified memory, zero inter-agent overhead."""
+    """Single-Agent System: invokes the ReAct-loop subgraph (unified memory)."""
+    task = state.get("user_query", "")
+    extras = {}
+    if state.get("extraction_overrides"):
+        extras["extraction_overrides"] = state["extraction_overrides"]
+    if state.get("required_tools"):
+        extras["required_tools"] = state["required_tools"]
+
+    sas_result = single_agent_app.invoke({
+        "task": task,
+        "messages": [],
+        "pending_tool": "",
+        "final_response": "",
+        **extras,
+    })
+
     return {
         "selected_architecture": "Single-Agent System",
-        "final_response": "Executed sequentially to save token overhead.",
+        "final_response": sas_result.get("final_response", "Single-Agent execution complete."),
     }
 
 
 def centralized_mas_node(state: RouterState) -> dict:
     """Centralized MAS: invokes the hub-and-spoke subgraph."""
     task = state.get("user_query", "")
+    extras = {}
+    if state.get("extraction_overrides"):
+        extras["extraction_overrides"] = state["extraction_overrides"]
+    if state.get("required_tools"):
+        extras["required_tools"] = state["required_tools"]
 
-    mas_result = centralized_mas_app.invoke(
-        {
-            "task": task,
-            "aggregated_context": [],
-            "next_action": "",
-            "final_synthesis": "",
-        }
-    )
+    mas_result = centralized_mas_app.invoke({
+        "task": task,
+        "aggregated_context": [],
+        "next_action": "",
+        "final_synthesis": "",
+        **extras,
+    })
 
     return {
         "selected_architecture": "Centralized MAS",

@@ -29,8 +29,8 @@ This project implements a **Dynamic Architecture Router** that:
             ▼                       ▼                       ▼
     ┌───────────────┐      ┌────────────────┐      ┌──────────────────┐
     │ Single-Agent  │      │ Centralized    │      │ Decentralized     │
-    │ System (SAS)  │      │ MAS            │      │ MAS              │
-    │ O(k)          │      │ Hub-and-spoke  │      │ Peer-to-peer     │
+    │ System (SAS)  │      │ MAS            │      │ MAS (stub)        │
+    │ ReAct loop    │      │ Hub-and-spoke  │      │ Peer-to-peer      │
     └───────────────┘      └────────────────┘      └──────────────────┘
 ```
 
@@ -42,6 +42,14 @@ This project implements a **Dynamic Architecture Router** that:
 | `parallelism > 0.6` and `tools < 12` | **Centralized MAS** | Decompose orthogonal sub-goals safely |
 | Default | **Decentralized MAS** | Open-ended tasks; multi-perspective consensus |
 
+## Current Status
+
+| Component | Status |
+|-----------|--------|
+| **Implemented** | Router graph (LangGraph), Centralized MAS (hub-and-spoke), Single-Agent System (ReAct loop), PCAB tools & database, PCAB task registry, Oracle Evaluation Harness |
+| **Partial** | vLLM routing integration — router calls `predict_routing_metadata`; when vLLM server is unavailable (e.g. no GPU), it falls back to keyword heuristics. Set `USE_LLM_ROUTER=false` to force keyword mode for CI. |
+| **Stub** | Decentralized MAS — returns a placeholder response only; peer-to-peer consensus topology is planned. |
+
 ## Project Structure
 
 ```
@@ -50,18 +58,19 @@ DynamicRoutingAgents/
 ├── requirements.txt
 ├── pyproject.toml
 ├── run_examples.py              # Example execution script
-├── evaluate_regret.py           # Oracle Evaluation Harness (Routing Regret)
+├── evaluate_regret.py           # Oracle Evaluation Harness (v2, accuracy-based regret)
 ├── scripts/
 │   └── setup_pcab.py            # Initialize PCAB benchmark database
 └── src/
     └── dynamic_routing/
         ├── __init__.py
-        ├── state.py             # RouterState, CentralizedState schemas
+        ├── state.py             # RouterState, CentralizedState, SingleAgentState
         ├── router.py            # Main Dynamic Router graph
         ├── pcab.py              # PCAB database schema & agent tools
+        ├── pcab_tasks.py        # PCAB task registry (gold schemas, extraction params)
         ├── single_agent.py      # SAS: ReAct loop, unified memory
-        ├── vllm_integration.py  # Mistral-7B classifier via vLLM
-        └── centralized_mas.py   # Hub-and-spoke MAS (PCAB-backed)
+        ├── centralized_mas.py   # Hub-and-spoke MAS (PCAB-backed)
+        └── vllm_integration.py  # Mistral-7B classifier via vLLM (fallback: keywords)
 ```
 
 ## Installation
@@ -93,15 +102,7 @@ This runs four test cases demonstrating routing to each topology.
 python evaluate_regret.py
 ```
 
-Demonstrates how Routing Regret is calculated vs. the Oracle Baseline across SAS, Centralized MAS, and Decentralized MAS.
-
-### Run Oracle Evaluation Harness (Routing Regret)
-
-```bash
-python evaluate_regret.py
-```
-
-Demonstrates how Routing Regret is calculated vs. the Oracle Baseline across SAS, Centralized MAS, and Decentralized MAS.
+Demonstrates how Routing Regret is calculated vs. the Oracle Baseline across SAS, Centralized MAS, and Decentralized MAS. Uses accuracy-weighted composite reward (v2).
 
 ### Programmatic Usage
 
@@ -119,15 +120,15 @@ The SAS uses a ReAct (Reason + Act) loop with unified memory: every thought and 
 
 ### Routing by Query Patterns
 
-The skeleton uses keyword-based metadata extraction. Example behaviors:
+The router calls `predict_routing_metadata` from `vllm_integration`. When vLLM is unavailable (no server running, or `USE_LLM_ROUTER=false`), it falls back to keyword heuristics:
 
-- **"simultaneously" / "aggregate"** → High parallelism (0.9) → Centralized MAS
+- **"simultaneously" / "aggregate"** or 2+ of (calendar, maps, drive) → High parallelism (0.9) → Centralized MAS
 - **"step-by-step" / "complex workflow"** → Deep sequential (depth 8, tools 14) → SAS
-- **Default** → Moderate parallelism → Decentralized MAS
+- **Default** → Moderate parallelism → Decentralized MAS (stub)
 
 ### LLM-powered Routing (vLLM)
 
-The router uses Mistral-7B via vLLM for classification. Start the vLLM server:
+The router uses Mistral-7B via vLLM when available. Start the vLLM server:
 
 ```bash
 python -m vllm.entrypoints.openai.api_server \
