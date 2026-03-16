@@ -1,9 +1,13 @@
 """Pytest configuration: ensure PCAB database is initialized before router tests."""
 
+import os
 import sys
 from pathlib import Path
 
 import pytest
+
+# Use keyword fallback for deterministic, fast tests (no vLLM required)
+os.environ.setdefault("USE_LLM_ROUTER", "false")
 
 # Ensure src is on path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))

@@ -15,6 +15,9 @@ class RouterState(TypedDict, total=False):
     estimated_tool_count: int
     selected_architecture: str
     final_response: str
+    # Optional: when running benchmark tasks, pass extraction params from PCAB registry
+    extraction_overrides: dict
+    required_tools: list
 
 
 class CentralizedState(TypedDict, total=False):
@@ -24,3 +27,16 @@ class CentralizedState(TypedDict, total=False):
     aggregated_context: Annotated[list, operator.add]
     next_action: str
     final_synthesis: str
+    extraction_overrides: dict
+    required_tools: list
+
+
+class SingleAgentState(TypedDict, total=False):
+    """State for the Single-Agent System (unified memory, ReAct loop)."""
+
+    task: str
+    messages: Annotated[list, operator.add]
+    pending_tool: str
+    final_response: str
+    extraction_overrides: dict
+    required_tools: list

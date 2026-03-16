@@ -1,8 +1,12 @@
 """Tests for the Dynamic Architecture Router."""
 
+import os
 import re
 import sys
 from pathlib import Path
+
+# Use keyword fallback for fast, deterministic tests (no vLLM required)
+os.environ.setdefault("USE_LLM_ROUTER", "false")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
@@ -44,3 +48,24 @@ def test_centralized_mas_aggregates_pcab_sources() -> None:
     match = re.search(r"Aggregated (\d+) sources", result["final_response"])
     assert match is not None
     assert int(match.group(1)) >= 2
+
+
+def test_pcab_task_with_extraction_overrides() -> None:
+    """When PCAB task provides extraction_overrides and required_tools, agents use them (no hard-coded keywords)."""
+    from dynamic_routing.pcab_tasks import get_pcab_task
+
+    task = get_pcab_task("PCAB-Par-01")
+    assert task is not None
+    overrides = task.extraction_params.as_override_dict()
+
+    result = app.invoke({
+        "user_query": task.description,
+        "extraction_overrides": overrides,
+        "required_tools": task.required_tools,
+    })
+    assert result["selected_architecture"] == "Centralized MAS"
+    assert "Synthesis Complete" in result["final_response"]
+    # Should have aggregated 3 sources (calendar, drive, commute) per required_tools
+    match = re.search(r"Aggregated (\d+) sources", result["final_response"])
+    assert match is not None
+    assert int(match.group(1)) >= 3

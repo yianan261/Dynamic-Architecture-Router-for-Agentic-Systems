@@ -5,11 +5,18 @@ Example execution of the Dynamic Architecture Router.
 Run from project root:
     python run_examples.py
 
-Or with the package on PYTHONPATH:
-    python -m run_examples
+Without vLLM: Uses keyword fallback (set USE_LLM_ROUTER=false to suppress warnings).
+With vLLM: Start server with:
+    python -m vllm.entrypoints.openai.api_server \\
+        --model mistralai/Mistral-7B-Instruct-v0.2 --port 8000
 """
 
+import os
 import sys
+
+# Use keyword fallback for demos when vLLM is not running
+os.environ.setdefault("USE_LLM_ROUTER", "false")
+
 from pathlib import Path
 
 # Ensure src is on the path when running from project root
@@ -60,6 +67,23 @@ def main() -> None:
     print(f"Query: {test_4['user_query']}")
     print(f"Routed To: {result_4['selected_architecture']}")
     print(f"Response: {result_4['final_response']}")
+
+    # Test Case 5: PCAB task by ID (data-driven, no hard-coded conditions)
+    print("\n--- Test 5: PCAB Task by ID (Data-Driven Extraction) ---")
+    from dynamic_routing.pcab_tasks import get_pcab_task
+
+    pcab_task = get_pcab_task("PCAB-Par-01")
+    if pcab_task:
+        test_5 = {
+            "user_query": pcab_task.description,
+            "extraction_overrides": pcab_task.extraction_params.as_override_dict(),
+            "required_tools": pcab_task.required_tools,
+        }
+        result_5 = app.invoke(test_5)
+        print(f"Task ID: {pcab_task.id}")
+        print(f"Query: {pcab_task.description}")
+        print(f"Routed To: {result_5['selected_architecture']}")
+        print(f"Response: {result_5['final_response']}")
 
     print("\n" + "=" * 60)
     print("All tests completed.")
