@@ -7,12 +7,17 @@ completion scores (Trajectory Accuracy) to fairly evaluate agent runs.
 
 Composite reward: Score = (α * Accuracy) - (β * Latency_norm) - (γ * Tokens_norm)
 
-Run from project root (after scripts/setup_pcab.py):
-    python evaluate_regret.py
+Data source: Loads benchmark_results.json produced by run_benchmark_sweep.py.
+Tokens come from mock formula (rule-based) or LLM response_metadata (when wired).
+
+Run from project root:
+    python run_benchmark_sweep.py   # Generate results
+    python evaluate_regret.py       # Load JSON and compute oracle/regret
 """
 
 from __future__ import annotations
 
+import json
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -20,6 +25,8 @@ from typing import Any
 
 project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(project_root / "src"))
+
+DEFAULT_RESULTS_PATH = project_root / "benchmark_results.json"
 
 
 @dataclass
@@ -121,76 +128,70 @@ def compute_trajectory_accuracy(
     return hits / len(required_tools)
 
 
-def main() -> None:
+def load_results(path: Path | None = None) -> dict[str, Any]:
+    """Load benchmark results from JSON. Returns the parsed object."""
+    p = path or DEFAULT_RESULTS_PATH
+    if not p.exists():
+        print(f"ERROR: {p} not found. Run: python run_benchmark_sweep.py")
+        sys.exit(1)
+    with open(p) as f:
+        return json.load(f)
+
+
+def main(results_path: Path | None = None) -> None:
+    data = load_results(results_path)
+    metadata = data.get("metadata", {})
+    tasks = data.get("tasks", [])
+
+    print("=" * 70)
+    print("Oracle Evaluation Harness (v2)")
+    print(f"Data: benchmark_results.json | Phase: {metadata.get('phase', '?')}")
+    print("=" * 70)
+
     evaluator = RegretEvaluator()
+    perfect_count = 0
+    total_regret_acc = 0.0
+    tasks_with_router = 0
 
-    print("--- Benchmark Task: PCAB-Exploratory-03 ---")
-    print("Task: 'Cross-reference 3 different data sources to find schedule anomalies.'")
+    for item in tasks:
+        task_id = item.get("task_id", "?")
+        description = item.get("description", "")[:60]
+        router_pred = item.get("router_prediction")
 
-    test_results = [
-        ExecutionResult(
-            "Single-Agent System",
-            accuracy_score=0.33,
-            latency_sec=60.0,
-            total_tokens=4200,
-            error_type="Timeout",
-        ),
-        ExecutionResult(
-            "Centralized MAS",
-            accuracy_score=0.66,
-            latency_sec=18.0,
-            total_tokens=12500,
-            error_type="Synthesis Drift",
-        ),
-        ExecutionResult(
-            "Decentralized MAS",
-            accuracy_score=1.0,
-            latency_sec=45.0,
-            total_tokens=35000,
-        ),
-    ]
+        results = [
+            ExecutionResult(
+                architecture=r["architecture"],
+                accuracy_score=float(r["accuracy_score"]),
+                latency_sec=float(r["latency_sec"]),
+                total_tokens=int(r["total_tokens"]),
+                error_type=r.get("error_type"),
+            )
+            for r in item.get("results", [])
+        ]
 
-    router_prediction = "Centralized MAS"
-    metrics = evaluator.calculate_regret(router_prediction, test_results)
+        if not results:
+            continue
 
-    print(f"Oracle Determined Best Architecture: {metrics['oracle_baseline']}")
-    print(f"Router Selected: {metrics['router_prediction']}")
-    print(f"Perfect Routing: {metrics['perfect_routing']}")
-    print(f"Accuracy Regret: {metrics['accuracy_regret']}")
-    print(f"Latency Regret: {metrics['latency_regret_sec']}s")
-    print(f"Token Regret: {metrics['token_regret']} tokens")
+        oracle = evaluator.determine_oracle(results)
+        print(f"\n[{task_id}] {description}...")
+        print(f"  Oracle: {oracle.architecture} (acc={oracle.accuracy_score:.2f}, lat={oracle.latency_sec:.4f}s, tok={oracle.total_tokens})")
 
-    print("\n--- Benchmark Task: PCAB-Seq-01 (Heavy Sequential) ---")
-    print("Task: 'Find my advisor's next available slot, check conflicts, plan commute.'")
+        if router_pred is not None:
+            metrics = evaluator.calculate_regret(router_pred, results)
+            print(f"  Router: {router_pred} | Perfect: {metrics['perfect_routing']}")
+            if not metrics["perfect_routing"]:
+                print(f"  Regret: acc={metrics['accuracy_regret']}, lat={metrics['latency_regret_sec']}s, tok={metrics['token_regret']}")
+            perfect_count += int(metrics["perfect_routing"])
+            total_regret_acc += metrics["accuracy_regret"]
+            tasks_with_router += 1
+        else:
+            print("  (No router_prediction in sweep; run full router for regret)")
 
-    seq_results = [
-        ExecutionResult("Single-Agent System", 1.0, 12.5, 4200),
-        ExecutionResult("Centralized MAS", 1.0, 28.0, 14500),
-        ExecutionResult(
-            "Decentralized MAS",
-            0.0,
-            45.0,
-            22000,
-            error_type="Infinite Debate Loop",
-        ),
-    ]
-
-    seq_metrics = evaluator.calculate_regret("Single-Agent System", seq_results)
-    print(f"Oracle: {seq_metrics['oracle_baseline']}")
-    print(f"Perfect Routing: {seq_metrics['perfect_routing']}")
-
-    print("\n--- Benchmark Task: PCAB-Par-14 (Heavy Parallel) ---")
-    print("(Router mistakenly picks SAS for a highly parallel task)")
-
-    parallel_results = [
-        ExecutionResult("Single-Agent System", 1.0, 45.0, 8000),
-        ExecutionResult("Centralized MAS", 1.0, 14.2, 9500),
-    ]
-
-    par_metrics = evaluator.calculate_regret("Single-Agent System", parallel_results)
-    print(f"Oracle: {par_metrics['oracle_baseline']}")
-    print(f"Latency Regret: {par_metrics['latency_regret_sec']}s penalty paid by the user!")
+    if tasks_with_router > 0:
+        print("\n" + "-" * 70)
+        print(f"Perfect routing: {perfect_count}/{tasks_with_router} | Avg accuracy regret: {total_regret_acc / tasks_with_router:.2f}")
 
 
 if __name__ == "__main__":
-    main()
+    path = Path(sys.argv[1]) if len(sys.argv) > 1 else None
+    main(path)

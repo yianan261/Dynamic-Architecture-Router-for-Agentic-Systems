@@ -69,6 +69,7 @@ DynamicRoutingAgents/
         ├── router.py            # Main Dynamic Router graph
         ├── pcab.py              # PCAB database schema & agent tools
         ├── pcab_tasks.py        # PCAB task registry (gold schemas, extraction params)
+        ├── agent_tools.py       # LangChain @tool bindings for Llama (JSON schema)
         ├── single_agent.py      # SAS: ReAct loop, unified memory
         ├── centralized_mas.py   # Hub-and-spoke MAS (PCAB-backed)
         └── vllm_integration.py  # Mistral-7B classifier via vLLM (fallback: keywords)
@@ -109,10 +110,11 @@ Runs all 5 PCAB tasks through both SAS and Centralized MAS, records latency and 
 ### Run Oracle Evaluation Harness (Routing Regret)
 
 ```bash
-python evaluate_regret.py
+python run_benchmark_sweep.py   # Generates benchmark_results.json
+python evaluate_regret.py      # Loads JSON, computes oracle and regret
 ```
 
-Demonstrates how Routing Regret is calculated vs. the Oracle Baseline across SAS, Centralized MAS, and Decentralized MAS. Uses accuracy-weighted composite reward (v2).
+Loads `benchmark_results.json` from the sweep and computes the Oracle Baseline (composite reward) per task. Regret metrics appear when `router_prediction` is populated (e.g. after running the full router).
 
 ### Programmatic Usage
 

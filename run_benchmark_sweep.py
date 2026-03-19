@@ -3,7 +3,8 @@
 Benchmark Sweep Executor.
 
 Runs the PCAB tasks through the Single-Agent and Centralized MAS architectures,
-records telemetry (latency, trajectory accuracy), and outputs results.
+records telemetry (latency, trajectory accuracy, tokens), and saves results to
+benchmark_results.json for evaluate_regret.py.
 
 Prerequisites:
     python scripts/setup_pcab.py   # Seed the PCAB database
@@ -12,6 +13,7 @@ Run from project root:
     python run_benchmark_sweep.py
 """
 
+import json
 import sys
 import time
 from pathlib import Path
@@ -130,6 +132,46 @@ def main() -> None:
         all_sas.append((task.id, sas_accuracy, sas_latency, sas_tokens))
         all_cmas.append((task.id, cmas_accuracy, cmas_latency, cmas_tokens))
 
+    # --- Save to benchmark_results.json ---
+    results_path = project_root / "benchmark_results.json"
+    task_results = []
+    for i, task in enumerate(tasks):
+        sid, sa, sl, st = all_sas[i]
+        cid, ca, cl, ct = all_cmas[i]
+        task_results.append({
+            "task_id": task.id,
+            "description": task.description,
+            "category": task.category,
+            "router_prediction": None,  # Populate when running full router
+            "results": [
+                {
+                    "architecture": "Single-Agent System",
+                    "accuracy_score": round(sa, 2),
+                    "latency_sec": round(sl, 4),
+                    "total_tokens": st,
+                    "error_type": None,
+                },
+                {
+                    "architecture": "Centralized MAS",
+                    "accuracy_score": round(ca, 2),
+                    "latency_sec": round(cl, 4),
+                    "total_tokens": ct,
+                    "error_type": None,
+                },
+            ],
+        })
+    output = {
+        "metadata": {
+            "sweep_timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "phase": "rule_based",
+            "note": "total_tokens from mock formula; use LLM response_metadata when wired.",
+        },
+        "tasks": task_results,
+    }
+    with open(results_path, "w") as f:
+        json.dump(output, f, indent=2)
+    print(f"\nResults saved to {results_path}")
+
     # --- Summary ---
     print("\n" + "=" * 70)
     print("Summary")
@@ -144,7 +186,7 @@ def main() -> None:
     avg_sas_acc = sum(r[1] for r in all_sas) / len(all_sas)
     avg_cmas_acc = sum(r[1] for r in all_cmas) / len(all_cmas)
     print(f"{'AVERAGE':<25} {avg_sas_acc:>8.2f} {'':>10} {avg_cmas_acc:>8.2f}")
-    print("\nPipeline verified. Ready for LLM integration.")
+    print("\nPipeline verified. Run: python evaluate_regret.py (loads benchmark_results.json)")
 
 
 if __name__ == "__main__":
