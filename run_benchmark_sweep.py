@@ -14,6 +14,7 @@ Run from project root:
 """
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -77,9 +78,11 @@ def main() -> None:
     _ensure_db()
 
     tasks = get_pcab_tasks()
+    use_llm = os.environ.get("USE_LLM_WORKERS", "false").lower() in ("true", "1", "yes")
+    phase = "llm" if use_llm else "rule_based"
     print("=" * 70)
     print(f"Benchmark Sweep: {len(tasks)} PCAB Tasks")
-    print("(Rule-based execution — no LLM; proves pipeline before adding Llama)")
+    print(f"Mode: {'LLM (Llama-3 via vLLM)' if use_llm else 'Rule-based (no LLM)'}")
     print("=" * 70)
 
     all_sas = []
@@ -106,8 +109,7 @@ def main() -> None:
         sas_latency = time.perf_counter() - start
         sas_executed = sas_result.get("executed_tools") or []
         sas_accuracy = calculate_sas_accuracy(task.required_tools, sas_executed)
-        # Mock tokens (replace with LLM metadata later)
-        sas_tokens = len(sas_executed) * 400
+        sas_tokens = sas_result.get("total_tokens") or len(sas_executed) * 400
 
         print(f"  SAS   | Accuracy: {sas_accuracy:.2f} | Latency: {sas_latency:.4f}s | Tokens: {sas_tokens}")
 
@@ -125,7 +127,7 @@ def main() -> None:
         cmas_latency = time.perf_counter() - start
         cmas_context = cmas_result.get("aggregated_context") or []
         cmas_accuracy = calculate_cmas_accuracy(task.required_tools, cmas_context)
-        cmas_tokens = len(cmas_context) * 400 + 800  # Overhead for supervisor
+        cmas_tokens = cmas_result.get("total_tokens") or (len(cmas_context) * 400 + 800)
 
         print(f"  CMAS  | Accuracy: {cmas_accuracy:.2f} | Latency: {cmas_latency:.4f}s | Tokens: {cmas_tokens}")
 
@@ -163,8 +165,8 @@ def main() -> None:
     output = {
         "metadata": {
             "sweep_timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "phase": "rule_based",
-            "note": "total_tokens from mock formula; use LLM response_metadata when wired.",
+            "phase": phase,
+            "note": "total_tokens from LLM response_metadata when USE_LLM_WORKERS=true, mock formula otherwise.",
         },
         "tasks": task_results,
     }

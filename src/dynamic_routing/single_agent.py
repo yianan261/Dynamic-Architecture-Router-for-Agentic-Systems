@@ -1,32 +1,22 @@
 """
 Single-Agent System (SAS): Unified memory topology.
 
-A single agent executes tasks sequentially using a rule-based ReAct-style loop
-(reason node + tool node). Tool completion is tracked explicitly via executed_tools
-state—not by scanning message strings, which would misclassify "I need to call X"
-as X already executed.
+Two modes controlled by USE_LLM_WORKERS env var:
+  - LLM mode: Llama-3-8B via vLLM + create_react_agent (full ReAct loop)
+  - Rule-based mode (default): deterministic tool dispatch for CI/benchmarking
 """
 
 import logging
+import os
 
 from langgraph.graph import END, StateGraph
 
-from dynamic_routing.pcab import (
-    estimate_commute,
-    extract_commute_pair,
-    extract_contact_name,
-    extract_date,
-    extract_drive_query,
-    get_calendar_events,
-    get_contact_preferences,
-    get_db_path,
-    search_drive_docs,
-)
 from dynamic_routing.state import SingleAgentState
 
+# ---------------------------------------------------------------------------
+# Shared constants
+# ---------------------------------------------------------------------------
 
-# Tool name constants (parsed from thought messages)
-_TOOL_PREFIX = "call_"
 _TOOLS = frozenset({
     "call_get_contact_preferences",
     "call_get_calendar_events",
@@ -34,7 +24,6 @@ _TOOLS = frozenset({
     "call_estimate_commute",
 })
 
-# Map required_tools registry names to internal tool names
 _REQUIRED_TOOL_TO_CALL: dict[str, str] = {
     "get_contact_preferences": "call_get_contact_preferences",
     "get_calendar_events": "call_get_calendar_events",
@@ -42,9 +31,72 @@ _REQUIRED_TOOL_TO_CALL: dict[str, str] = {
     "estimate_commute": "call_estimate_commute",
 }
 
+_USE_LLM = os.environ.get("USE_LLM_WORKERS", "false").lower() in ("true", "1", "yes")
+
+# ===========================================================================
+# LLM Mode — Llama-3 via vLLM with create_react_agent
+# ===========================================================================
+
+
+def _build_llm_sas_graph() -> StateGraph:
+    """Build SAS graph powered by Llama-3 ReAct agent."""
+    from langchain_openai import ChatOpenAI
+    from langgraph.prebuilt import create_react_agent
+
+    from dynamic_routing.agent_tools import LLM_TOOL_TO_SAS_CALL, PCAB_TOOLS
+
+    worker_llm = ChatOpenAI(
+        model=os.environ.get("VLLM_WORKER_MODEL", "meta-llama/Meta-Llama-3-8B-Instruct"),
+        api_key=os.environ.get("OPENAI_API_KEY", "EMPTY"),
+        base_url=os.environ.get("VLLM_WORKER_URL", "http://localhost:8001/v1"),
+        temperature=0.1,
+    )
+
+    react_agent = create_react_agent(
+        worker_llm,
+        PCAB_TOOLS,
+        state_modifier="You are an efficient personal assistant. Use your tools to fetch data and solve the user's task.",
+    )
+
+    def sas_llm_node(state: SingleAgentState) -> dict:
+        result = react_agent.invoke({"messages": [("user", state["task"])]})
+
+        tokens = 0
+        executed: list[str] = []
+        for msg in result.get("messages", []):
+            if hasattr(msg, "response_metadata"):
+                usage = msg.response_metadata.get("token_usage") or {}
+                tokens += usage.get("total_tokens", 0)
+            if getattr(msg, "tool_calls", None):
+                for call in msg.tool_calls:
+                    mapped = LLM_TOOL_TO_SAS_CALL.get(call["name"], call["name"])
+                    executed.append(mapped)
+
+        final = ""
+        for msg in reversed(result.get("messages", [])):
+            if hasattr(msg, "content") and msg.content:
+                final = msg.content
+                break
+
+        return {
+            "final_response": final or "Single-Agent execution complete.",
+            "total_tokens": tokens,
+            "executed_tools": executed,
+        }
+
+    builder = StateGraph(SingleAgentState)
+    builder.add_node("sas", sas_llm_node)
+    builder.set_entry_point("sas")
+    builder.add_edge("sas", END)
+    return builder.compile()
+
+
+# ===========================================================================
+# Rule-Based Mode — deterministic dispatch (no LLM required)
+# ===========================================================================
+
 
 def _parse_pending_tool(messages: list) -> str | None:
-    """Extract the tool name from the last thought message."""
     if not messages:
         return None
     last = str(messages[-1])
@@ -54,30 +106,26 @@ def _parse_pending_tool(messages: list) -> str | None:
     return None
 
 
-# --- ReAct: Reasoning Node ---
+def _sas_reasoning_node(state: SingleAgentState) -> dict:
+    from dynamic_routing.pcab import (
+        extract_commute_pair,
+        extract_contact_name,
+        extract_date,
+        extract_drive_query,
+    )
 
-
-def sas_reasoning_node(state: SingleAgentState) -> dict:
-    """
-    Decides: call another tool, or synthesize final answer.
-    Uses executed_tools (not message-string scan) to avoid misclassifying
-    "Thought: I need to execute X" as X already run.
-    """
     task = state["task"]
     task_lower = task.lower()
     required_tools = state.get("required_tools") or []
     executed = set(state.get("executed_tools") or [])
 
-    # When task registry provides required_tools, use data-driven dispatch
     if required_tools:
         for tool_name in required_tools:
             call_name = _REQUIRED_TOOL_TO_CALL.get(tool_name, f"call_{tool_name}")
             if call_name not in _TOOLS:
                 logging.warning(
-                    "SAS: skipping unsupported tool '%s' (mapped to '%s'); "
-                    "not in _TOOLS. Check PCAB task config.",
-                    tool_name,
-                    call_name,
+                    "SAS: skipping unsupported tool '%s' (mapped to '%s')",
+                    tool_name, call_name,
                 )
                 continue
             if call_name not in executed:
@@ -85,66 +133,51 @@ def sas_reasoning_node(state: SingleAgentState) -> dict:
                     "messages": [f"Thought: I need to execute {call_name} next."],
                     "pending_tool": call_name,
                 }
-        return {
-            "final_response": (
-                "Single-Agent synthesis complete. Processed all steps sequentially."
-            ),
-        }
+        return {"final_response": "Single-Agent synthesis complete. Processed all steps sequentially."}
 
-    # Fallback: keyword-based tool selection (also use executed_tools)
     has_contact = "call_get_contact_preferences" in executed
     has_calendar = "call_get_calendar_events" in executed
     has_drive = "call_search_drive_docs" in executed
     has_commute = "call_estimate_commute" in executed
 
-    if not has_contact and (
-        "advisor" in task_lower or "contact" in task_lower or "dr." in task_lower
-    ):
+    if not has_contact and ("advisor" in task_lower or "contact" in task_lower or "dr." in task_lower):
         action = "call_get_contact_preferences"
-    elif not has_calendar and (
-        "calendar" in task_lower or "schedule" in task_lower or "event" in task_lower
-        or "meeting" in task_lower or "meet" in task_lower or "lecture" in task_lower
-    ):
+    elif not has_calendar and ("calendar" in task_lower or "schedule" in task_lower or "event" in task_lower or "meeting" in task_lower or "meet" in task_lower or "lecture" in task_lower):
         action = "call_get_calendar_events"
-    elif not has_drive and (
-        "drive" in task_lower or "notes" in task_lower or "doc" in task_lower or "capstone" in task_lower
-    ):
+    elif not has_drive and ("drive" in task_lower or "notes" in task_lower or "doc" in task_lower or "capstone" in task_lower):
         action = "call_search_drive_docs"
-    elif not has_commute and (
-        "commute" in task_lower or "walk" in task_lower or "travel" in task_lower or "maps" in task_lower or "location" in task_lower
-    ):
+    elif not has_commute and ("commute" in task_lower or "walk" in task_lower or "travel" in task_lower or "maps" in task_lower or "location" in task_lower):
         action = "call_estimate_commute"
     else:
         action = "FINISH"
 
     if action == "FINISH":
-        return {
-            "final_response": (
-                "Single-Agent synthesis complete. Processed all steps sequentially."
-            ),
-        }
+        return {"final_response": "Single-Agent synthesis complete. Processed all steps sequentially."}
 
-    return {
-        "messages": [f"Thought: I need to execute {action} next."],
-        "pending_tool": action,
-    }
+    return {"messages": [f"Thought: I need to execute {action} next."], "pending_tool": action}
 
 
-# --- ReAct: Tool Execution Node ---
+def _sas_tool_node(state: SingleAgentState) -> dict:
+    from dynamic_routing.pcab import (
+        estimate_commute,
+        extract_commute_pair,
+        extract_contact_name,
+        extract_date,
+        extract_drive_query,
+        get_calendar_events,
+        get_contact_preferences,
+        get_db_path,
+        search_drive_docs,
+    )
 
-
-def sas_tool_node(state: SingleAgentState) -> dict:
-    """Executes the pending tool and appends the result to the unified memory."""
     task = state.get("task", "")
     pending = state.get("pending_tool", "")
     overrides = state.get("extraction_overrides") or {}
 
     if not pending or pending not in _TOOLS:
-        # Fallback: try to parse from last message
         pending = _parse_pending_tool(state.get("messages", [])) or pending
 
     db = get_db_path()
-    result: str
 
     if pending == "call_get_contact_preferences":
         name = extract_contact_name(task, overrides) or "Dr. Hong Man"
@@ -171,31 +204,31 @@ def sas_tool_node(state: SingleAgentState) -> dict:
     }
 
 
-# --- ReAct: Routing Edge ---
-
-
-def sas_router(state: SingleAgentState):
-    """If synthesis complete, end. Otherwise, execute the pending tool."""
+def _sas_router(state: SingleAgentState):
     if state.get("final_response"):
         return END
     return "tools"
 
 
-# --- Build the SAS Graph ---
-
-
-def build_single_agent_graph() -> StateGraph:
-    """Build and return the compiled Single-Agent System graph."""
+def _build_rule_based_sas_graph() -> StateGraph:
     builder = StateGraph(SingleAgentState)
-
-    builder.add_node("reason", sas_reasoning_node)
-    builder.add_node("tools", sas_tool_node)
-
+    builder.add_node("reason", _sas_reasoning_node)
+    builder.add_node("tools", _sas_tool_node)
     builder.set_entry_point("reason")
-    builder.add_conditional_edges("reason", sas_router)
+    builder.add_conditional_edges("reason", _sas_router)
     builder.add_edge("tools", "reason")
-
     return builder.compile()
+
+
+# ===========================================================================
+# Export the correct graph based on mode
+# ===========================================================================
+
+
+def build_single_agent_graph():
+    if _USE_LLM:
+        return _build_llm_sas_graph()
+    return _build_rule_based_sas_graph()
 
 
 single_agent_app = build_single_agent_graph()

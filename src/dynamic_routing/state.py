@@ -15,9 +15,9 @@ class RouterState(TypedDict, total=False):
     estimated_tool_count: int
     selected_architecture: str
     final_response: str
-    # Optional: when running benchmark tasks, pass extraction params from PCAB registry
     extraction_overrides: dict
     required_tools: list
+    total_tokens: int
 
 
 class CentralizedState(TypedDict, total=False):
@@ -29,6 +29,7 @@ class CentralizedState(TypedDict, total=False):
     final_synthesis: str
     extraction_overrides: dict
     required_tools: list
+    total_tokens: Annotated[int, operator.add]
 
 
 class SingleAgentState(TypedDict, total=False):
@@ -36,8 +37,9 @@ class SingleAgentState(TypedDict, total=False):
 
     task: str
     messages: Annotated[list, operator.add]
-    executed_tools: Annotated[list[str], operator.add]  # Explicit tracking; avoids brittle string scan
+    executed_tools: Annotated[list[str], operator.add]
     pending_tool: str
     final_response: str
     extraction_overrides: dict
     required_tools: list
+    total_tokens: Annotated[int, operator.add]

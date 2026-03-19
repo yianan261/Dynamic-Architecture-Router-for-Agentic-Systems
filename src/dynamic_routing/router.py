@@ -70,12 +70,14 @@ def single_agent_node(state: RouterState) -> dict:
         "executed_tools": [],
         "pending_tool": "",
         "final_response": "",
+        "total_tokens": 0,
         **extras,
     })
 
     return {
         "selected_architecture": "Single-Agent System",
         "final_response": sas_result.get("final_response", "Single-Agent execution complete."),
+        "total_tokens": sas_result.get("total_tokens", 0),
     }
 
 
@@ -93,12 +95,14 @@ def centralized_mas_node(state: RouterState) -> dict:
         "aggregated_context": [],
         "next_action": "",
         "final_synthesis": "",
+        "total_tokens": 0,
         **extras,
     })
 
     return {
         "selected_architecture": "Centralized MAS",
         "final_response": mas_result.get("final_synthesis", "Executed in parallel via supervisor orchestration."),
+        "total_tokens": mas_result.get("total_tokens", 0),
     }
 
 

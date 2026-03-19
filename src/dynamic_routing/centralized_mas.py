@@ -1,15 +1,18 @@
 """
 Centralized Multi-Agent System (MAS): Hub-and-spoke topology.
 
-The Supervisor orchestrates worker agents (Calendar, Drive, Commute, Contacts)
-backed by the PCAB (Personalized Context Assembly Benchmark) SQLite database.
-Workers cannot communicate directly—they report to the Supervisor, which acts
-as a validation bottleneck to restrict error amplification (~4.4x).
+Two modes controlled by USE_LLM_WORKERS env var:
+  - LLM mode: Each worker is a restricted Llama-3 ReAct agent with a single tool.
+    The Supervisor uses Llama-3 for final synthesis.
+  - Rule-based mode (default): deterministic dispatch for CI/benchmarking.
 """
+
+import os
 
 from langgraph.graph import END, StateGraph
 
-# Map required_tools registry names to worker agent names
+from dynamic_routing.state import CentralizedState
+
 _REQUIRED_TOOL_TO_WORKER: dict[str, str] = {
     "get_contact_preferences": "contacts_agent",
     "get_calendar_events": "calendar_agent",
@@ -17,25 +20,119 @@ _REQUIRED_TOOL_TO_WORKER: dict[str, str] = {
     "estimate_commute": "commute_agent",
 }
 
-from dynamic_routing.pcab import (
-    estimate_commute,
-    extract_commute_pair,
-    extract_contact_name,
-    extract_date,
-    extract_drive_query,
-    get_calendar_events,
-    get_contact_preferences,
-    get_db_path,
-    search_drive_docs,
-)
-from dynamic_routing.state import CentralizedState
+_USE_LLM = os.environ.get("USE_LLM_WORKERS", "false").lower() in ("true", "1", "yes")
+
+# ===========================================================================
+# LLM Mode — Llama-3 restricted workers + LLM synthesis
+# ===========================================================================
 
 
-# --- Worker Agents (PCAB-backed) ---
+def _build_llm_cmas_graph() -> StateGraph:
+    from langchain_openai import ChatOpenAI
+    from langgraph.prebuilt import create_react_agent
+
+    from dynamic_routing.agent_tools import (
+        calendar_tool,
+        commute_tool,
+        contact_tool,
+        drive_tool,
+    )
+
+    worker_llm = ChatOpenAI(
+        model=os.environ.get("VLLM_WORKER_MODEL", "meta-llama/Meta-Llama-3-8B-Instruct"),
+        api_key=os.environ.get("OPENAI_API_KEY", "EMPTY"),
+        base_url=os.environ.get("VLLM_WORKER_URL", "http://localhost:8001/v1"),
+        temperature=0.1,
+    )
+
+    cal_react = create_react_agent(worker_llm, [calendar_tool], state_modifier="You are a Calendar Agent. Fetch events and return a concise summary.")
+    drv_react = create_react_agent(worker_llm, [drive_tool], state_modifier="You are a Drive Agent. Search notes and summarize.")
+    com_react = create_react_agent(worker_llm, [commute_tool], state_modifier="You are a Commute Agent. Estimate travel times.")
+    con_react = create_react_agent(worker_llm, [contact_tool], state_modifier="You are a Contacts Agent. Get meeting preferences.")
+
+    def _run_llm_worker(react_agent, task: str, prefix: str) -> dict:
+        result = react_agent.invoke({"messages": [("user", task)]})
+        tokens = 0
+        for msg in result.get("messages", []):
+            if hasattr(msg, "response_metadata"):
+                usage = msg.response_metadata.get("token_usage") or {}
+                tokens += usage.get("total_tokens", 0)
+        final = ""
+        for msg in reversed(result.get("messages", [])):
+            if hasattr(msg, "content") and msg.content:
+                final = msg.content
+                break
+        return {
+            "aggregated_context": [f"[{prefix}]{final}"],
+            "total_tokens": tokens,
+        }
+
+    def llm_calendar_agent(state: CentralizedState) -> dict:
+        return _run_llm_worker(cal_react, state["task"], "CALENDAR")
+
+    def llm_drive_agent(state: CentralizedState) -> dict:
+        return _run_llm_worker(drv_react, state["task"], "DRIVE")
+
+    def llm_commute_agent(state: CentralizedState) -> dict:
+        return _run_llm_worker(com_react, state["task"], "COMMUTE")
+
+    def llm_contacts_agent(state: CentralizedState) -> dict:
+        return _run_llm_worker(con_react, state["task"], "CONTACTS")
+
+    def llm_supervisor_node(state: CentralizedState) -> dict:
+        context = state.get("aggregated_context", [])
+        context_str = str(context).lower()
+        req_tools = state.get("required_tools") or []
+        task = state["task"]
+
+        # Data-driven dispatch for remaining workers
+        if req_tools:
+            for tool_name in req_tools:
+                worker = _REQUIRED_TOOL_TO_WORKER.get(tool_name)
+                if worker and f"[{worker.replace('_agent', '').lower()}]" not in context_str:
+                    return {"next_action": worker}
+
+        # All workers done — LLM synthesis
+        prompt = f"Task: {task}\n\nAggregated Data:\n{context}\n\nSynthesize this data into a clear final answer."
+        response = worker_llm.invoke(prompt)
+
+        tokens = 0
+        if hasattr(response, "response_metadata"):
+            usage = response.response_metadata.get("token_usage") or {}
+            tokens = usage.get("total_tokens", 0)
+
+        return {
+            "next_action": "FINISH",
+            "final_synthesis": response.content,
+            "total_tokens": tokens,
+        }
+
+    def supervisor_router(state: CentralizedState):
+        return END if state.get("next_action") == "FINISH" else state["next_action"]
+
+    builder = StateGraph(CentralizedState)
+    builder.add_node("supervisor", llm_supervisor_node)
+    builder.add_node("calendar_agent", llm_calendar_agent)
+    builder.add_node("drive_agent", llm_drive_agent)
+    builder.add_node("commute_agent", llm_commute_agent)
+    builder.add_node("contacts_agent", llm_contacts_agent)
+    builder.set_entry_point("supervisor")
+    builder.add_edge("calendar_agent", "supervisor")
+    builder.add_edge("drive_agent", "supervisor")
+    builder.add_edge("commute_agent", "supervisor")
+    builder.add_edge("contacts_agent", "supervisor")
+    builder.add_conditional_edges("supervisor", supervisor_router)
+    return builder.compile()
 
 
-def calendar_agent(state: CentralizedState) -> dict:
-    """Worker: fetches calendar events from PCAB."""
+# ===========================================================================
+# Rule-Based Mode — deterministic dispatch (no LLM required)
+# ===========================================================================
+
+
+def _rule_calendar_agent(state: CentralizedState) -> dict:
+    from dynamic_routing.pcab import extract_date, get_calendar_events, get_db_path
+
     task = state.get("task", "")
     overrides = state.get("extraction_overrides") or {}
     date = extract_date(task, overrides)
@@ -43,8 +140,9 @@ def calendar_agent(state: CentralizedState) -> dict:
     return {"aggregated_context": [f"[CALENDAR]{result}"]}
 
 
-def drive_agent(state: CentralizedState) -> dict:
-    """Worker: searches Drive docs from PCAB."""
+def _rule_drive_agent(state: CentralizedState) -> dict:
+    from dynamic_routing.pcab import extract_drive_query, get_db_path, search_drive_docs
+
     task = state.get("task", "")
     overrides = state.get("extraction_overrides") or {}
     query = extract_drive_query(task, overrides)
@@ -52,8 +150,9 @@ def drive_agent(state: CentralizedState) -> dict:
     return {"aggregated_context": [f"[DRIVE]{result}"]}
 
 
-def commute_agent(state: CentralizedState) -> dict:
-    """Worker: estimates commute between locations from PCAB Maps/Commute data."""
+def _rule_commute_agent(state: CentralizedState) -> dict:
+    from dynamic_routing.pcab import estimate_commute, extract_commute_pair, get_db_path
+
     task = state.get("task", "")
     overrides = state.get("extraction_overrides") or {}
     pair = extract_commute_pair(task, overrides)
@@ -64,8 +163,9 @@ def commute_agent(state: CentralizedState) -> dict:
     return {"aggregated_context": [f"[COMMUTE]{result}"]}
 
 
-def contacts_agent(state: CentralizedState) -> dict:
-    """Worker: fetches contact preferences from PCAB."""
+def _rule_contacts_agent(state: CentralizedState) -> dict:
+    from dynamic_routing.pcab import extract_contact_name, get_contact_preferences, get_db_path
+
     task = state.get("task", "")
     overrides = state.get("extraction_overrides") or {}
     name = extract_contact_name(task, overrides)
@@ -76,44 +176,28 @@ def contacts_agent(state: CentralizedState) -> dict:
     return {"aggregated_context": [f"[CONTACTS]{result}"]}
 
 
-# --- Supervisor Orchestrator ---
-
-
-def supervisor_node(state: CentralizedState) -> dict:
-    """
-    Supervisor analyzes aggregated context and decides which worker
-    to dispatch next, or if synthesis is complete.
-    When required_tools is provided (e.g. from PCAB task registry), uses that
-    instead of hard-coded keyword matching.
-    """
+def _rule_supervisor_node(state: CentralizedState) -> dict:
     context = state.get("aggregated_context", [])
     task = state["task"].lower()
     context_str = str(context).lower()
     required_tools = state.get("required_tools") or []
 
-    # Check which PCAB sources have been queried
-    has_calendar = "[calendar]" in context_str
-    has_drive = "[drive]" in context_str
-    has_commute = "[commute]" in context_str
-    has_contacts = "[contacts]" in context_str
-
-    # When task registry provides required_tools, use data-driven dispatch
     if required_tools:
         for tool_name in required_tools:
             worker = _REQUIRED_TOOL_TO_WORKER.get(tool_name)
             if not worker:
                 continue
-            # Workers emit e.g. "[CALENDAR]{result}"; context_str is lowercased
             context_key = f"[{worker.replace('_agent', '').lower()}]"
             if context_key not in context_str:
                 return {"next_action": worker}
-        synthesis = (
-            f"Synthesis Complete. Aggregated {len(context)} sources "
-            "to build personalized context."
-        )
+        synthesis = f"Synthesis Complete. Aggregated {len(context)} sources to build personalized context."
         return {"next_action": "FINISH", "final_synthesis": synthesis}
 
-    # Fallback: keyword-based worker selection
+    has_calendar = "[calendar]" in context_str
+    has_drive = "[drive]" in context_str
+    has_commute = "[commute]" in context_str
+    has_contacts = "[contacts]" in context_str
+
     if not has_calendar and ("calendar" in task or "schedule" in task or "event" in task or "meeting" in task):
         next_worker = "calendar_agent"
     elif not has_drive and ("drive" in task or "notes" in task or "doc" in task or "capstone" in task):
@@ -126,45 +210,41 @@ def supervisor_node(state: CentralizedState) -> dict:
         next_worker = "FINISH"
 
     if next_worker == "FINISH":
-        synthesis = (
-            f"Synthesis Complete. Aggregated {len(context)} sources "
-            "to build personalized context."
-        )
+        synthesis = f"Synthesis Complete. Aggregated {len(context)} sources to build personalized context."
         return {"next_action": next_worker, "final_synthesis": synthesis}
 
     return {"next_action": next_worker}
 
 
-def supervisor_router(state: CentralizedState):
-    """Routes the graph based on supervisor decision."""
-    if state.get("next_action") == "FINISH":
-        return END
-    return state["next_action"]
+def _rule_supervisor_router(state: CentralizedState):
+    return END if state.get("next_action") == "FINISH" else state["next_action"]
 
 
-# --- Build the Centralized Graph ---
-
-
-def build_centralized_mas_graph() -> StateGraph:
-    """Build and return the compiled Centralized MAS graph."""
+def _build_rule_based_cmas_graph() -> StateGraph:
     builder = StateGraph(CentralizedState)
-
-    builder.add_node("supervisor", supervisor_node)
-    builder.add_node("calendar_agent", calendar_agent)
-    builder.add_node("drive_agent", drive_agent)
-    builder.add_node("commute_agent", commute_agent)
-    builder.add_node("contacts_agent", contacts_agent)
-
+    builder.add_node("supervisor", _rule_supervisor_node)
+    builder.add_node("calendar_agent", _rule_calendar_agent)
+    builder.add_node("drive_agent", _rule_drive_agent)
+    builder.add_node("commute_agent", _rule_commute_agent)
+    builder.add_node("contacts_agent", _rule_contacts_agent)
     builder.set_entry_point("supervisor")
-
     builder.add_edge("calendar_agent", "supervisor")
     builder.add_edge("drive_agent", "supervisor")
     builder.add_edge("commute_agent", "supervisor")
     builder.add_edge("contacts_agent", "supervisor")
-
-    builder.add_conditional_edges("supervisor", supervisor_router)
-
+    builder.add_conditional_edges("supervisor", _rule_supervisor_router)
     return builder.compile()
+
+
+# ===========================================================================
+# Export the correct graph based on mode
+# ===========================================================================
+
+
+def build_centralized_mas_graph():
+    if _USE_LLM:
+        return _build_llm_cmas_graph()
+    return _build_rule_based_cmas_graph()
 
 
 centralized_mas_app = build_centralized_mas_graph()
