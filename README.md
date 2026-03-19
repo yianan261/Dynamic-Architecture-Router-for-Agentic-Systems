@@ -162,7 +162,7 @@ Example task: *"I need to meet with Dr. Hong Man on March 16th after my Deep Lea
 ## Technology Stack (Proposal)
 
 - **Orchestration**: LangGraph with `StateGraph`
-- **AI Core (Local)**: Quantized Mistral 7B (routing), Llama 3 8B (execution), vLLM on V100 GPUs
+- **AI Core (Local)**: Quantized Mistral 7B (routing), Llama 3.1 8B (execution), vLLM on V100 GPUs
 - **API Fallbacks**: Google Gemini 1.5 Flash / OpenAI GPT-4o-mini via LangChain
 
 ## Evaluation (Proposal)

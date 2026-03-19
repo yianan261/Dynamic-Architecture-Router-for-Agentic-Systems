@@ -1,7 +1,7 @@
 """
 LangChain Tool Bindings for PCAB.
 
-Converts PCAB functions into strict JSON schemas that Llama-3 (or any LLM
+Converts PCAB functions into strict JSON schemas that Llama-3.1 (or any LLM
 via vLLM) can read and execute dynamically via create_react_agent.
 
 Telemetry: When using ChatOpenAI against vLLM, AIMessage.response_metadata

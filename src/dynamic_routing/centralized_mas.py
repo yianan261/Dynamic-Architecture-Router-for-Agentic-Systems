@@ -2,8 +2,8 @@
 Centralized Multi-Agent System (MAS): Hub-and-spoke topology.
 
 Two modes controlled by USE_LLM_WORKERS env var:
-  - LLM mode: Each worker is a restricted Llama-3 ReAct agent with a single tool.
-    The Supervisor uses Llama-3 for final synthesis.
+  - LLM mode: Each worker is a restricted Llama-3.1 ReAct agent with a single tool.
+    The Supervisor uses Llama-3.1 for final synthesis.
   - Rule-based mode (default): deterministic dispatch for CI/benchmarking.
 """
 
@@ -23,7 +23,7 @@ _REQUIRED_TOOL_TO_WORKER: dict[str, str] = {
 _USE_LLM = os.environ.get("USE_LLM_WORKERS", "false").lower() in ("true", "1", "yes")
 
 # ===========================================================================
-# LLM Mode — Llama-3 restricted workers + LLM synthesis
+# LLM Mode — Llama-3.1 restricted workers + LLM synthesis
 # ===========================================================================
 
 
@@ -39,16 +39,16 @@ def _build_llm_cmas_graph() -> StateGraph:
     )
 
     worker_llm = ChatOpenAI(
-        model=os.environ.get("VLLM_WORKER_MODEL", "meta-llama/Meta-Llama-3-8B-Instruct"),
+        model=os.environ.get("VLLM_WORKER_MODEL", "meta-llama/Llama-3.1-8B-Instruct"),
         api_key=os.environ.get("OPENAI_API_KEY", "EMPTY"),
         base_url=os.environ.get("VLLM_WORKER_URL", "http://localhost:8001/v1"),
         temperature=0.1,
     )
 
-    cal_react = create_react_agent(worker_llm, [calendar_tool], state_modifier="You are a Calendar Agent. Fetch events and return a concise summary.")
-    drv_react = create_react_agent(worker_llm, [drive_tool], state_modifier="You are a Drive Agent. Search notes and summarize.")
-    com_react = create_react_agent(worker_llm, [commute_tool], state_modifier="You are a Commute Agent. Estimate travel times.")
-    con_react = create_react_agent(worker_llm, [contact_tool], state_modifier="You are a Contacts Agent. Get meeting preferences.")
+    cal_react = create_react_agent(worker_llm, [calendar_tool], prompt="You are a Calendar Agent. Fetch events and return a concise summary.")
+    drv_react = create_react_agent(worker_llm, [drive_tool], prompt="You are a Drive Agent. Search notes and summarize.")
+    com_react = create_react_agent(worker_llm, [commute_tool], prompt="You are a Commute Agent. Estimate travel times.")
+    con_react = create_react_agent(worker_llm, [contact_tool], prompt="You are a Contacts Agent. Get meeting preferences.")
 
     def _run_llm_worker(react_agent, task: str, prefix: str) -> dict:
         result = react_agent.invoke({"messages": [("user", task)]})

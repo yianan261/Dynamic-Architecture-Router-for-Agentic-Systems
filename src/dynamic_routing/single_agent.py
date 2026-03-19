@@ -2,7 +2,7 @@
 Single-Agent System (SAS): Unified memory topology.
 
 Two modes controlled by USE_LLM_WORKERS env var:
-  - LLM mode: Llama-3-8B via vLLM + create_react_agent (full ReAct loop)
+  - LLM mode: Llama-3.1-8B via vLLM + create_react_agent (full ReAct loop)
   - Rule-based mode (default): deterministic tool dispatch for CI/benchmarking
 """
 
@@ -34,19 +34,19 @@ _REQUIRED_TOOL_TO_CALL: dict[str, str] = {
 _USE_LLM = os.environ.get("USE_LLM_WORKERS", "false").lower() in ("true", "1", "yes")
 
 # ===========================================================================
-# LLM Mode — Llama-3 via vLLM with create_react_agent
+# LLM Mode — Llama-3.1 via vLLM with create_react_agent
 # ===========================================================================
 
 
 def _build_llm_sas_graph() -> StateGraph:
-    """Build SAS graph powered by Llama-3 ReAct agent."""
+    """Build SAS graph powered by Llama-3.1 ReAct agent."""
     from langchain_openai import ChatOpenAI
     from langgraph.prebuilt import create_react_agent
 
     from dynamic_routing.agent_tools import LLM_TOOL_TO_SAS_CALL, PCAB_TOOLS
 
     worker_llm = ChatOpenAI(
-        model=os.environ.get("VLLM_WORKER_MODEL", "meta-llama/Meta-Llama-3-8B-Instruct"),
+        model=os.environ.get("VLLM_WORKER_MODEL", "meta-llama/Llama-3.1-8B-Instruct"),
         api_key=os.environ.get("OPENAI_API_KEY", "EMPTY"),
         base_url=os.environ.get("VLLM_WORKER_URL", "http://localhost:8001/v1"),
         temperature=0.1,
@@ -55,7 +55,7 @@ def _build_llm_sas_graph() -> StateGraph:
     react_agent = create_react_agent(
         worker_llm,
         PCAB_TOOLS,
-        state_modifier="You are an efficient personal assistant. Use your tools to fetch data and solve the user's task.",
+        prompt="You are an efficient personal assistant. Use your tools to fetch data and solve the user's task.",
     )
 
     def sas_llm_node(state: SingleAgentState) -> dict:

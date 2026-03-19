@@ -82,7 +82,7 @@ def main() -> None:
     phase = "llm" if use_llm else "rule_based"
     print("=" * 70)
     print(f"Benchmark Sweep: {len(tasks)} PCAB Tasks")
-    print(f"Mode: {'LLM (Llama-3 via vLLM)' if use_llm else 'Rule-based (no LLM)'}")
+    print(f"Mode: {'LLM (Llama-3.1 via vLLM)' if use_llm else 'Rule-based (no LLM)'}")
     print("=" * 70)
 
     all_sas = []
