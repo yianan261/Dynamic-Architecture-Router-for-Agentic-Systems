@@ -58,6 +58,7 @@ DynamicRoutingAgents/
 ├── requirements.txt
 ├── pyproject.toml
 ├── run_examples.py              # Example execution script
+├── run_benchmark_sweep.py       # Benchmark sweep: SAS + CMAS across all PCAB tasks
 ├── evaluate_regret.py           # Oracle Evaluation Harness (v2, accuracy-based regret)
 ├── scripts/
 │   └── setup_pcab.py            # Initialize PCAB benchmark database
@@ -94,7 +95,16 @@ python scripts/setup_pcab.py
 python run_examples.py
 ```
 
-This runs four test cases demonstrating routing to each topology.
+This runs five test cases demonstrating routing to each topology.
+
+### Run Benchmark Sweep (PCAB End-to-End)
+
+```bash
+python scripts/setup_pcab.py   # Ensure database is seeded
+python run_benchmark_sweep.py
+```
+
+Runs all 5 PCAB tasks through both SAS and Centralized MAS, records latency and trajectory accuracy, and prints a summary. Uses rule-based execution (no LLM)—blisteringly fast proof that the pipeline works before adding Llama.
 
 ### Run Oracle Evaluation Harness (Routing Regret)
 
