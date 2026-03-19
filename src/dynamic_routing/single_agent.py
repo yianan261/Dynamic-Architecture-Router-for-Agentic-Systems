@@ -50,7 +50,7 @@ def _build_llm_sas_graph() -> StateGraph:
         api_key=os.environ.get("OPENAI_API_KEY", "EMPTY"),
         base_url=os.environ.get("VLLM_WORKER_URL", "http://localhost:8001/v1"),
         temperature=0.1,
-    )
+    ).bind_tools(PCAB_TOOLS, parallel_tool_calls=False)
 
     react_agent = create_react_agent(
         worker_llm,

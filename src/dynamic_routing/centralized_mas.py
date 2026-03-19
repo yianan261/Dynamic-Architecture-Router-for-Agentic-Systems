@@ -38,17 +38,17 @@ def _build_llm_cmas_graph() -> StateGraph:
         drive_tool,
     )
 
-    worker_llm = ChatOpenAI(
+    base_llm = ChatOpenAI(
         model=os.environ.get("VLLM_WORKER_MODEL", "meta-llama/Llama-3.1-8B-Instruct"),
         api_key=os.environ.get("OPENAI_API_KEY", "EMPTY"),
         base_url=os.environ.get("VLLM_WORKER_URL", "http://localhost:8001/v1"),
         temperature=0.1,
     )
 
-    cal_react = create_react_agent(worker_llm, [calendar_tool], prompt="You are a Calendar Agent. Fetch events and return a concise summary.")
-    drv_react = create_react_agent(worker_llm, [drive_tool], prompt="You are a Drive Agent. Search notes and summarize.")
-    com_react = create_react_agent(worker_llm, [commute_tool], prompt="You are a Commute Agent. Estimate travel times.")
-    con_react = create_react_agent(worker_llm, [contact_tool], prompt="You are a Contacts Agent. Get meeting preferences.")
+    cal_react = create_react_agent(base_llm.bind_tools([calendar_tool], parallel_tool_calls=False), [calendar_tool], prompt="You are a Calendar Agent. Fetch events and return a concise summary.")
+    drv_react = create_react_agent(base_llm.bind_tools([drive_tool], parallel_tool_calls=False), [drive_tool], prompt="You are a Drive Agent. Search notes and summarize.")
+    com_react = create_react_agent(base_llm.bind_tools([commute_tool], parallel_tool_calls=False), [commute_tool], prompt="You are a Commute Agent. Estimate travel times.")
+    con_react = create_react_agent(base_llm.bind_tools([contact_tool], parallel_tool_calls=False), [contact_tool], prompt="You are a Contacts Agent. Get meeting preferences.")
 
     def _run_llm_worker(react_agent, task: str, prefix: str) -> dict:
         result = react_agent.invoke({"messages": [("user", task)]})
@@ -94,7 +94,7 @@ def _build_llm_cmas_graph() -> StateGraph:
 
         # All workers done — LLM synthesis
         prompt = f"Task: {task}\n\nAggregated Data:\n{context}\n\nSynthesize this data into a clear final answer."
-        response = worker_llm.invoke(prompt)
+        response = base_llm.invoke(prompt)
 
         tokens = 0
         if hasattr(response, "response_metadata"):
