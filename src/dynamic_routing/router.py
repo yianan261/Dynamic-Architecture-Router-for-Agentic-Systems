@@ -67,6 +67,7 @@ def single_agent_node(state: RouterState) -> dict:
     sas_result = single_agent_app.invoke({
         "task": task,
         "messages": [],
+        "executed_tools": [],
         "pending_tool": "",
         "final_response": "",
         **extras,

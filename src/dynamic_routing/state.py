@@ -36,6 +36,7 @@ class SingleAgentState(TypedDict, total=False):
 
     task: str
     messages: Annotated[list, operator.add]
+    executed_tools: Annotated[list[str], operator.add]  # Explicit tracking; avoids brittle string scan
     pending_tool: str
     final_response: str
     extraction_overrides: dict

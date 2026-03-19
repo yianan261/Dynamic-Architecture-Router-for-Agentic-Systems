@@ -1,13 +1,13 @@
 """
 Single-Agent System (SAS): Unified memory topology.
 
-A single agent executes tasks sequentially using a ReAct (Reason + Act) loop.
-It has access to all tools without inter-agent communication overhead.
-It is good for deep sequential tasks, but bottlenecks on parallel tasks.
-
-State contrast with CMAS: SAS uses a unified message stream (all thoughts and
-tool results in one list); CMAS isolates context per worker.
+A single agent executes tasks sequentially using a rule-based ReAct-style loop
+(reason node + tool node). Tool completion is tracked explicitly via executed_tools
+state—not by scanning message strings, which would misclassify "I need to call X"
+as X already executed.
 """
+
+import logging
 
 from langgraph.graph import END, StateGraph
 
@@ -59,24 +59,28 @@ def _parse_pending_tool(messages: list) -> str | None:
 
 def sas_reasoning_node(state: SingleAgentState) -> dict:
     """
-    The agent reads the task and message history (unified memory stream).
     Decides: call another tool, or synthesize final answer.
-    When required_tools is provided (e.g. from PCAB task registry), uses that
-    instead of hard-coded keyword matching.
+    Uses executed_tools (not message-string scan) to avoid misclassifying
+    "Thought: I need to execute X" as X already run.
     """
     task = state["task"]
-    messages = state.get("messages", [])
-    messages_str = str(messages).lower()
     task_lower = task.lower()
     required_tools = state.get("required_tools") or []
+    executed = set(state.get("executed_tools") or [])
 
     # When task registry provides required_tools, use data-driven dispatch
     if required_tools:
         for tool_name in required_tools:
             call_name = _REQUIRED_TOOL_TO_CALL.get(tool_name, f"call_{tool_name}")
             if call_name not in _TOOLS:
+                logging.warning(
+                    "SAS: skipping unsupported tool '%s' (mapped to '%s'); "
+                    "not in _TOOLS. Check PCAB task config.",
+                    tool_name,
+                    call_name,
+                )
                 continue
-            if call_name not in messages_str:
+            if call_name not in executed:
                 return {
                     "messages": [f"Thought: I need to execute {call_name} next."],
                     "pending_tool": call_name,
@@ -87,11 +91,11 @@ def sas_reasoning_node(state: SingleAgentState) -> dict:
             ),
         }
 
-    # Fallback: keyword-based tool selection
-    has_contact = "call_get_contact_preferences" in messages_str
-    has_calendar = "call_get_calendar_events" in messages_str
-    has_drive = "call_search_drive_docs" in messages_str
-    has_commute = "call_estimate_commute" in messages_str
+    # Fallback: keyword-based tool selection (also use executed_tools)
+    has_contact = "call_get_contact_preferences" in executed
+    has_calendar = "call_get_calendar_events" in executed
+    has_drive = "call_search_drive_docs" in executed
+    has_commute = "call_estimate_commute" in executed
 
     if not has_contact and (
         "advisor" in task_lower or "contact" in task_lower or "dr." in task_lower
@@ -160,7 +164,11 @@ def sas_tool_node(state: SingleAgentState) -> dict:
     else:
         result = f'{{"error": "Unknown tool: {pending}"}}'
 
-    return {"messages": [f"[{pending}] {result}"]}
+    return {
+        "messages": [f"[{pending}] {result}"],
+        "executed_tools": [pending],
+        "pending_tool": "",
+    }
 
 
 # --- ReAct: Routing Edge ---
