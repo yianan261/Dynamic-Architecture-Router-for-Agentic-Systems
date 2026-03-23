@@ -104,14 +104,28 @@ def main() -> None:
             "pending_tool": "",
             "final_response": "",
         }
-        start = time.perf_counter()
-        sas_result = single_agent_app.invoke(sas_state)
-        sas_latency = time.perf_counter() - start
-        sas_executed = sas_result.get("executed_tools") or []
-        sas_accuracy = calculate_sas_accuracy(task.required_tools, sas_executed)
-        sas_tokens = sas_result.get("total_tokens") or len(sas_executed) * 400
+        try:
+            start = time.perf_counter()
+            sas_result = single_agent_app.invoke(sas_state)
+            sas_latency = time.perf_counter() - start
+            sas_executed = sas_result.get("executed_tools") or []
+            sas_accuracy = calculate_sas_accuracy(task.required_tools, sas_executed)
+            sas_tokens = sas_result.get("total_tokens") or len(sas_executed) * 400
+            sas_taxonomy = sas_result.get("failure_taxonomy")
+            sas_path = sas_result.get("execution_path", [])
+        except Exception as e:
+            sas_latency = time.perf_counter() - start
+            sas_accuracy, sas_tokens = 0.0, 0
+            sas_taxonomy = f"Unhandled Exception: {str(e)[:100]}"
+            sas_path = []
+            print(f"  SAS   | ERROR: {sas_taxonomy}")
 
-        print(f"  SAS   | Accuracy: {sas_accuracy:.2f} | Latency: {sas_latency:.4f}s | Tokens: {sas_tokens}")
+        if sas_taxonomy:
+            print(f"  SAS   | TAXONOMY: {sas_taxonomy}")
+            print(f"  SAS   | Accuracy: {sas_accuracy:.2f} | Latency: {sas_latency:.4f}s | Tokens: {sas_tokens}")
+        else:
+            print(f"  SAS   | Accuracy: {sas_accuracy:.2f} | Latency: {sas_latency:.4f}s | Tokens: {sas_tokens}")
+            print(f"          Path: {' → '.join(sas_path) if sas_path else 'n/a'}")
 
         # --- 2. Centralized MAS ---
         cmas_state = {
@@ -122,43 +136,59 @@ def main() -> None:
             "next_action": "",
             "final_synthesis": "",
         }
-        start = time.perf_counter()
-        cmas_result = centralized_mas_app.invoke(cmas_state)
-        cmas_latency = time.perf_counter() - start
-        cmas_context = cmas_result.get("aggregated_context") or []
-        cmas_accuracy = calculate_cmas_accuracy(task.required_tools, cmas_context)
-        cmas_tokens = cmas_result.get("total_tokens") or (len(cmas_context) * 400 + 800)
+        try:
+            start = time.perf_counter()
+            cmas_result = centralized_mas_app.invoke(cmas_state)
+            cmas_latency = time.perf_counter() - start
+            cmas_context = cmas_result.get("aggregated_context") or []
+            cmas_accuracy = calculate_cmas_accuracy(task.required_tools, cmas_context)
+            cmas_tokens = cmas_result.get("total_tokens") or (len(cmas_context) * 400 + 800)
+            cmas_taxonomy = cmas_result.get("failure_taxonomy")
+            cmas_path = cmas_result.get("execution_path", [])
+        except Exception as e:
+            cmas_latency = time.perf_counter() - start
+            cmas_accuracy, cmas_tokens = 0.0, 0
+            cmas_taxonomy = f"Unhandled Exception: {str(e)[:100]}"
+            cmas_path = []
+            print(f"  CMAS  | ERROR: {cmas_taxonomy}")
 
-        print(f"  CMAS  | Accuracy: {cmas_accuracy:.2f} | Latency: {cmas_latency:.4f}s | Tokens: {cmas_tokens}")
+        if cmas_taxonomy:
+            print(f"  CMAS  | TAXONOMY: {cmas_taxonomy}")
+            print(f"  CMAS  | Accuracy: {cmas_accuracy:.2f} | Latency: {cmas_latency:.4f}s | Tokens: {cmas_tokens}")
+        else:
+            print(f"  CMAS  | Accuracy: {cmas_accuracy:.2f} | Latency: {cmas_latency:.4f}s | Tokens: {cmas_tokens}")
+            print(f"          Path: {' → '.join(cmas_path) if cmas_path else 'n/a'}")
 
-        all_sas.append((task.id, sas_accuracy, sas_latency, sas_tokens))
-        all_cmas.append((task.id, cmas_accuracy, cmas_latency, cmas_tokens))
+        all_sas.append((task.id, sas_accuracy, sas_latency, sas_tokens, sas_taxonomy, sas_path))
+        all_cmas.append((task.id, cmas_accuracy, cmas_latency, cmas_tokens, cmas_taxonomy, cmas_path))
 
     # --- Save to benchmark_results.json ---
     results_path = project_root / "benchmark_results.json"
     task_results = []
     for i, task in enumerate(tasks):
-        sid, sa, sl, st = all_sas[i]
-        cid, ca, cl, ct = all_cmas[i]
+        sid, sa, sl, st, se, sp = all_sas[i]
+        cid, ca, cl, ct, ce, cp = all_cmas[i]
         task_results.append({
             "task_id": task.id,
             "description": task.description,
             "category": task.category,
-            "router_prediction": None,  # Populate when running full router
+            "router_prediction": None,
             "results": [
                 {
                     "architecture": "Single-Agent System",
                     "accuracy_score": round(sa, 2),
                     "latency_sec": round(sl, 4),
                     "total_tokens": st,
-                    "error_type": None,
+                    "error_type": se,
+                    "execution_path": sp,
                 },
                 {
                     "architecture": "Centralized MAS",
                     "accuracy_score": round(ca, 2),
                     "latency_sec": round(cl, 4),
                     "total_tokens": ct,
-                    "error_type": None,
+                    "error_type": ce,
+                    "execution_path": cp,
                 },
             ],
         })
@@ -181,9 +211,11 @@ def main() -> None:
     print(f"{'Task':<25} {'SAS Acc':>8} {'SAS Lat':>10} {'CMAS Acc':>8} {'CMAS Lat':>10}")
     print("-" * 70)
     for i, task in enumerate(tasks):
-        sid, sa, sl, st = all_sas[i]
-        cid, ca, cl, ct = all_cmas[i]
-        print(f"{sid:<25} {sa:>8.2f} {sl:>9.4f}s {ca:>8.2f} {cl:>9.4f}s")
+        sid, sa, sl, st, se, sp = all_sas[i]
+        cid, ca, cl, ct, ce, cp = all_cmas[i]
+        sas_col = f"{sa:>8.2f}" if se is None else "   FAIL "
+        cmas_col = f"{ca:>8.2f}" if ce is None else "   FAIL "
+        print(f"{sid:<25} {sas_col} {sl:>9.4f}s {cmas_col} {cl:>9.4f}s")
     print("-" * 70)
     avg_sas_acc = sum(r[1] for r in all_sas) / len(all_sas)
     avg_cmas_acc = sum(r[1] for r in all_cmas) / len(all_cmas)

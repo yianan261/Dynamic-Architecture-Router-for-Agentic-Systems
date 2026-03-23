@@ -30,6 +30,8 @@ class CentralizedState(TypedDict, total=False):
     extraction_overrides: dict
     required_tools: list
     total_tokens: Annotated[int, operator.add]
+    execution_path: Annotated[list[str], operator.add]
+    failure_taxonomy: str
 
 
 class SingleAgentState(TypedDict, total=False):
@@ -43,3 +45,5 @@ class SingleAgentState(TypedDict, total=False):
     extraction_overrides: dict
     required_tools: list
     total_tokens: Annotated[int, operator.add]
+    execution_path: Annotated[list[str], operator.add]
+    failure_taxonomy: str

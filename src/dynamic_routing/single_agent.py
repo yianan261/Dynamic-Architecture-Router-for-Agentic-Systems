@@ -33,6 +33,8 @@ _REQUIRED_TOOL_TO_CALL: dict[str, str] = {
 
 _USE_LLM = os.environ.get("USE_LLM_WORKERS", "false").lower() in ("true", "1", "yes")
 
+MAX_REACT_ITERATIONS = 15
+
 # ===========================================================================
 # LLM Mode — Llama-3.1 via vLLM with create_react_agent
 # ===========================================================================
@@ -59,10 +61,30 @@ def _build_llm_sas_graph() -> StateGraph:
     )
 
     def sas_llm_node(state: SingleAgentState) -> dict:
-        result = react_agent.invoke({"messages": [("user", state["task"])]})
+        try:
+            result = react_agent.invoke(
+                {"messages": [("user", state["task"])]},
+                config={"recursion_limit": MAX_REACT_ITERATIONS},
+            )
+        except Exception as e:
+            err = str(e).lower()
+            if "recursion" in err:
+                taxonomy = "System Design Issue: ReAct Loop Exhaustion"
+            elif "context length" in err or "input_tokens" in err:
+                taxonomy = "System Design Issue: Context Window Overflow"
+            else:
+                taxonomy = f"Task Verification Failure: {str(e)[:80]}"
+            logging.warning("SAS LLM circuit breaker: %s", taxonomy)
+            return {
+                "final_response": f"HALTED: {taxonomy}",
+                "total_tokens": 0,
+                "executed_tools": [],
+                "failure_taxonomy": taxonomy,
+            }
 
         tokens = 0
         executed: list[str] = []
+        path: list[str] = []
         for msg in result.get("messages", []):
             if hasattr(msg, "response_metadata"):
                 usage = msg.response_metadata.get("token_usage") or {}
@@ -71,6 +93,7 @@ def _build_llm_sas_graph() -> StateGraph:
                 for call in msg.tool_calls:
                     mapped = LLM_TOOL_TO_SAS_CALL.get(call["name"], call["name"])
                     executed.append(mapped)
+                    path.append(call["name"])
 
         final = ""
         for msg in reversed(result.get("messages", [])):
@@ -82,6 +105,7 @@ def _build_llm_sas_graph() -> StateGraph:
             "final_response": final or "Single-Agent execution complete.",
             "total_tokens": tokens,
             "executed_tools": executed,
+            "execution_path": path,
         }
 
     builder = StateGraph(SingleAgentState)
@@ -132,8 +156,12 @@ def _sas_reasoning_node(state: SingleAgentState) -> dict:
                 return {
                     "messages": [f"Thought: I need to execute {call_name} next."],
                     "pending_tool": call_name,
+                    "execution_path": [call_name],
                 }
-        return {"final_response": "Single-Agent synthesis complete. Processed all steps sequentially."}
+        return {
+            "final_response": "Single-Agent synthesis complete. Processed all steps sequentially.",
+            "execution_path": ["FINISH"],
+        }
 
     has_contact = "call_get_contact_preferences" in executed
     has_calendar = "call_get_calendar_events" in executed
@@ -152,9 +180,16 @@ def _sas_reasoning_node(state: SingleAgentState) -> dict:
         action = "FINISH"
 
     if action == "FINISH":
-        return {"final_response": "Single-Agent synthesis complete. Processed all steps sequentially."}
+        return {
+            "final_response": "Single-Agent synthesis complete. Processed all steps sequentially.",
+            "execution_path": ["FINISH"],
+        }
 
-    return {"messages": [f"Thought: I need to execute {action} next."], "pending_tool": action}
+    return {
+        "messages": [f"Thought: I need to execute {action} next."],
+        "pending_tool": action,
+        "execution_path": [action],
+    }
 
 
 def _sas_tool_node(state: SingleAgentState) -> dict:

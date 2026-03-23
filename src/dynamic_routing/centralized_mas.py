@@ -7,6 +7,7 @@ Two modes controlled by USE_LLM_WORKERS env var:
   - Rule-based mode (default): deterministic dispatch for CI/benchmarking.
 """
 
+import logging
 import os
 
 from langgraph.graph import END, StateGraph
@@ -21,6 +22,8 @@ _REQUIRED_TOOL_TO_WORKER: dict[str, str] = {
 }
 
 _USE_LLM = os.environ.get("USE_LLM_WORKERS", "false").lower() in ("true", "1", "yes")
+
+MAX_SUPERVISOR_TURNS = 10
 
 # ===========================================================================
 # LLM Mode — Llama-3.1 restricted workers + LLM synthesis
@@ -79,32 +82,99 @@ def _build_llm_cmas_graph() -> StateGraph:
     def llm_contacts_agent(state: CentralizedState) -> dict:
         return _run_llm_worker(con_react, state["task"], "CONTACTS")
 
+    _WORKER_DESCRIPTIONS = {
+        "calendar_agent": "Fetches calendar events and schedules",
+        "drive_agent": "Searches documents and notes",
+        "commute_agent": "Estimates travel/commute times between locations",
+        "contacts_agent": "Gets contact preferences and meeting details",
+    }
+
+    def _extract_tokens(response) -> int:
+        if hasattr(response, "response_metadata"):
+            usage = response.response_metadata.get("token_usage") or {}
+            return usage.get("total_tokens", 0)
+        return 0
+
+    def _detect_cycle(history: list[str]) -> str | None:
+        """Return a taxonomy tag if the execution path shows a cyclic failure."""
+        if len(history) >= 3 and history[-1] == history[-2] == history[-3]:
+            return "Inter-agent Misalignment: Cyclic Repetition"
+        if len(history) >= 4 and history[-1] == history[-3] and history[-2] == history[-4]:
+            return "Inter-agent Misalignment: Oscillating Dispatch"
+        return None
+
     def llm_supervisor_node(state: CentralizedState) -> dict:
         context = state.get("aggregated_context", [])
         context_str = str(context).lower()
-        req_tools = state.get("required_tools") or []
         task = state["task"]
+        history = state.get("execution_path", [])
 
-        # Data-driven dispatch for remaining workers
-        if req_tools:
-            for tool_name in req_tools:
-                worker = _REQUIRED_TOOL_TO_WORKER.get(tool_name)
-                if worker and f"[{worker.replace('_agent', '').lower()}]" not in context_str:
-                    return {"next_action": worker}
+        # --- Circuit Breaker: Total Turn Limit ---
+        if len(history) > MAX_SUPERVISOR_TURNS:
+            logging.warning("CMAS circuit breaker: max turns (%d) exceeded", MAX_SUPERVISOR_TURNS)
+            return {
+                "next_action": "FINISH",
+                "final_synthesis": "HALTED: Maximum coordination turns exceeded.",
+                "failure_taxonomy": "System Design Issue: Infinite Loop / Token Exhaustion",
+                "total_tokens": 0,
+            }
 
-        # All workers done — LLM synthesis
+        # --- Circuit Breaker: Cyclic Pattern ---
+        cycle_tag = _detect_cycle(history)
+        if cycle_tag:
+            logging.warning("CMAS circuit breaker: %s detected in path %s", cycle_tag, history[-4:])
+            return {
+                "next_action": "FINISH",
+                "final_synthesis": f"HALTED: {cycle_tag} detected.",
+                "failure_taxonomy": cycle_tag,
+                "total_tokens": 0,
+            }
+
+        done_workers = set()
+        for tag, worker in [("calendar", "calendar_agent"), ("drive", "drive_agent"),
+                            ("commute", "commute_agent"), ("contacts", "contacts_agent")]:
+            if f"[{tag}]" in context_str:
+                done_workers.add(worker)
+
+        available = [w for w in _WORKER_DESCRIPTIONS if w not in done_workers]
+
+        if not available:
+            prompt = f"Task: {task}\n\nAggregated Data:\n{context}\n\nSynthesize this data into a clear final answer."
+            response = base_llm.invoke(prompt)
+            return {
+                "next_action": "FINISH",
+                "final_synthesis": response.content,
+                "total_tokens": _extract_tokens(response),
+                "execution_path": ["FINISH"],
+            }
+
+        available_desc = "\n".join(
+            f"- {w}: {_WORKER_DESCRIPTIONS[w]}" for w in available
+        )
+        dispatch_prompt = (
+            f"You are a supervisor coordinating workers to answer a user's task.\n\n"
+            f"Task: {task}\n\n"
+            f"Data collected so far:\n{context if context else 'Nothing yet.'}\n\n"
+            f"Available workers you can dispatch:\n{available_desc}\n\n"
+            f"Which worker should be called next to gather information needed for the task? "
+            f"If you already have enough data, respond FINISH.\n"
+            f"Respond with ONLY the worker name (e.g. calendar_agent) or FINISH."
+        )
+        response = base_llm.invoke(dispatch_prompt)
+        tokens = _extract_tokens(response)
+        decision = response.content.strip().lower()
+
+        for w in available:
+            if w.replace("_agent", "") in decision:
+                return {"next_action": w, "total_tokens": tokens, "execution_path": [w]}
+
         prompt = f"Task: {task}\n\nAggregated Data:\n{context}\n\nSynthesize this data into a clear final answer."
-        response = base_llm.invoke(prompt)
-
-        tokens = 0
-        if hasattr(response, "response_metadata"):
-            usage = response.response_metadata.get("token_usage") or {}
-            tokens = usage.get("total_tokens", 0)
-
+        synth_response = base_llm.invoke(prompt)
         return {
             "next_action": "FINISH",
-            "final_synthesis": response.content,
-            "total_tokens": tokens,
+            "final_synthesis": synth_response.content,
+            "total_tokens": tokens + _extract_tokens(synth_response),
+            "execution_path": ["FINISH"],
         }
 
     def supervisor_router(state: CentralizedState):
@@ -189,9 +259,9 @@ def _rule_supervisor_node(state: CentralizedState) -> dict:
                 continue
             context_key = f"[{worker.replace('_agent', '').lower()}]"
             if context_key not in context_str:
-                return {"next_action": worker}
+                return {"next_action": worker, "execution_path": [worker]}
         synthesis = f"Synthesis Complete. Aggregated {len(context)} sources to build personalized context."
-        return {"next_action": "FINISH", "final_synthesis": synthesis}
+        return {"next_action": "FINISH", "final_synthesis": synthesis, "execution_path": ["FINISH"]}
 
     has_calendar = "[calendar]" in context_str
     has_drive = "[drive]" in context_str
@@ -211,9 +281,9 @@ def _rule_supervisor_node(state: CentralizedState) -> dict:
 
     if next_worker == "FINISH":
         synthesis = f"Synthesis Complete. Aggregated {len(context)} sources to build personalized context."
-        return {"next_action": next_worker, "final_synthesis": synthesis}
+        return {"next_action": next_worker, "final_synthesis": synthesis, "execution_path": ["FINISH"]}
 
-    return {"next_action": next_worker}
+    return {"next_action": next_worker, "execution_path": [next_worker]}
 
 
 def _rule_supervisor_router(state: CentralizedState):
