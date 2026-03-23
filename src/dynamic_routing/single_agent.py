@@ -85,6 +85,7 @@ def _build_llm_sas_graph() -> StateGraph:
         tokens = 0
         executed: list[str] = []
         path: list[str] = []
+        tool_signatures: list[str] = []
         for msg in result.get("messages", []):
             if hasattr(msg, "response_metadata"):
                 usage = msg.response_metadata.get("token_usage") or {}
@@ -94,6 +95,13 @@ def _build_llm_sas_graph() -> StateGraph:
                     mapped = LLM_TOOL_TO_SAS_CALL.get(call["name"], call["name"])
                     executed.append(mapped)
                     path.append(call["name"])
+                    sig = f"{mapped}({call.get('args', {})})"
+                    tool_signatures.append(sig)
+
+        taxonomy = None
+        if len(tool_signatures) >= 2 and tool_signatures[-1] == tool_signatures[-2]:
+            taxonomy = f"System Design Issue: Tool Explosion ({tool_signatures[-1]})"
+            logging.warning("SAS parameter hash: %s", taxonomy)
 
         final = ""
         for msg in reversed(result.get("messages", [])):
@@ -101,12 +109,15 @@ def _build_llm_sas_graph() -> StateGraph:
                 final = msg.content
                 break
 
-        return {
+        out: dict = {
             "final_response": final or "Single-Agent execution complete.",
             "total_tokens": tokens,
             "executed_tools": executed,
             "execution_path": path,
         }
+        if taxonomy:
+            out["failure_taxonomy"] = taxonomy
+        return out
 
     builder = StateGraph(SingleAgentState)
     builder.add_node("sas", sas_llm_node)

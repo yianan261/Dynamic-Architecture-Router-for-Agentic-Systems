@@ -156,17 +156,58 @@ def _build_llm_cmas_graph() -> StateGraph:
             f"Task: {task}\n\n"
             f"Data collected so far:\n{context if context else 'Nothing yet.'}\n\n"
             f"Available workers you can dispatch:\n{available_desc}\n\n"
-            f"Which worker should be called next to gather information needed for the task? "
-            f"If you already have enough data, respond FINISH.\n"
-            f"Respond with ONLY the worker name (e.g. calendar_agent) or FINISH."
+            f"Analyze the data collected so far. Is it sufficient to fully answer the task?\n"
+            f"If NO: Explain exactly WHY the data is insufficient or what is missing.\n"
+            f"If YES: Explain that you have all required data.\n\n"
+            f"Respond strictly in this two-line format:\n"
+            f"REASONING: <your explanation>\n"
+            f"ACTION: <worker_name or FINISH>"
         )
         response = base_llm.invoke(dispatch_prompt)
         tokens = _extract_tokens(response)
-        decision = response.content.strip().lower()
+        text = response.content.strip()
 
+        reasoning = ""
+        action_str = ""
+        for line in text.split("\n"):
+            stripped = line.strip()
+            if stripped.upper().startswith("REASONING:"):
+                reasoning = stripped[10:].strip()
+            elif stripped.upper().startswith("ACTION:"):
+                action_str = stripped[7:].strip().lower()
+
+        if not action_str:
+            action_str = text.lower()
+
+        chosen_worker = None
         for w in available:
-            if w.replace("_agent", "") in decision:
-                return {"next_action": w, "total_tokens": tokens, "execution_path": [w]}
+            if w.replace("_agent", "") in action_str:
+                chosen_worker = w
+                break
+
+        if chosen_worker:
+            is_redispatch = chosen_worker in done_workers
+            path_entry = f"{chosen_worker}|{reasoning}" if reasoning else chosen_worker
+
+            if is_redispatch:
+                taxonomy = (
+                    f"Inter-agent Misalignment: Synthesis Drift. "
+                    f"Supervisor re-dispatched {chosen_worker}: '{reasoning}'"
+                )
+                logging.warning("CMAS rejection: %s", taxonomy)
+                return {
+                    "next_action": "FINISH",
+                    "final_synthesis": f"HALTED: {taxonomy}",
+                    "failure_taxonomy": taxonomy,
+                    "total_tokens": tokens,
+                    "execution_path": [path_entry],
+                }
+
+            return {
+                "next_action": chosen_worker,
+                "total_tokens": tokens,
+                "execution_path": [path_entry],
+            }
 
         prompt = f"Task: {task}\n\nAggregated Data:\n{context}\n\nSynthesize this data into a clear final answer."
         synth_response = base_llm.invoke(prompt)
@@ -174,7 +215,7 @@ def _build_llm_cmas_graph() -> StateGraph:
             "next_action": "FINISH",
             "final_synthesis": synth_response.content,
             "total_tokens": tokens + _extract_tokens(synth_response),
-            "execution_path": ["FINISH"],
+            "execution_path": [f"FINISH|{reasoning}" if reasoning else "FINISH"],
         }
 
     def supervisor_router(state: CentralizedState):
