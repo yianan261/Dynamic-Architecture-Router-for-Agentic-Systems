@@ -24,6 +24,8 @@ _REQUIRED_TOOL_TO_WORKER: dict[str, str] = {
 _USE_LLM = os.environ.get("USE_LLM_WORKERS", "false").lower() in ("true", "1", "yes")
 
 MAX_SUPERVISOR_TURNS = 10
+MAX_WORKER_REACT_ITERATIONS = 12
+LOOP_SCORE_THRESHOLD = 0.5
 
 # ===========================================================================
 # LLM Mode — Llama-3.1 restricted workers + LLM synthesis
@@ -54,7 +56,26 @@ def _build_llm_cmas_graph() -> StateGraph:
     con_react = create_react_agent(base_llm.bind_tools([contact_tool], parallel_tool_calls=False), [contact_tool], prompt="You are a Contacts Agent. Get meeting preferences.")
 
     def _run_llm_worker(react_agent, task: str, prefix: str) -> dict:
-        result = react_agent.invoke({"messages": [("user", task)]})
+        try:
+            result = react_agent.invoke(
+                {"messages": [("user", task)]},
+                config={"recursion_limit": MAX_WORKER_REACT_ITERATIONS},
+            )
+        except Exception as e:
+            err = str(e).lower()
+            if "recursion" in err:
+                tag = "Worker ReAct Loop Exhaustion"
+            elif "context length" in err or "input_tokens" in err:
+                tag = "Worker Context Window Overflow"
+            else:
+                tag = f"Worker Error: {str(e)[:80]}"
+            logging.warning("CMAS worker [%s] failed: %s", prefix, tag)
+            return {
+                "aggregated_context": [f"[{prefix}] ERROR: {tag}"],
+                "total_tokens": 0,
+                "failure_taxonomy": f"System Design Issue: {tag}",
+            }
+
         tokens = 0
         for msg in result.get("messages", []):
             if hasattr(msg, "response_metadata"):
@@ -103,6 +124,16 @@ def _build_llm_cmas_graph() -> StateGraph:
             return "Inter-agent Misalignment: Oscillating Dispatch"
         return None
 
+    def _compute_loop_score(history: list[str]) -> float:
+        """Ratio of repeated dispatches to total dispatches (0.0 = no repeats, 1.0 = all repeats)."""
+        if len(history) < 2:
+            return 0.0
+        worker_entries = [h.split("|")[0] for h in history if h != "FINISH"]
+        if not worker_entries:
+            return 0.0
+        unique = len(set(worker_entries))
+        return 1.0 - (unique / len(worker_entries))
+
     def llm_supervisor_node(state: CentralizedState) -> dict:
         context = state.get("aggregated_context", [])
         context_str = str(context).lower()
@@ -127,6 +158,21 @@ def _build_llm_cmas_graph() -> StateGraph:
                 "next_action": "FINISH",
                 "final_synthesis": f"HALTED: {cycle_tag} detected.",
                 "failure_taxonomy": cycle_tag,
+                "total_tokens": 0,
+            }
+
+        # --- Circuit Breaker: Loop Score Threshold ---
+        loop_score = _compute_loop_score(history)
+        if len(history) >= 4 and loop_score >= LOOP_SCORE_THRESHOLD:
+            taxonomy = (
+                f"System Design Issue: Loop Score {loop_score:.2f} "
+                f"exceeds threshold {LOOP_SCORE_THRESHOLD}"
+            )
+            logging.warning("CMAS circuit breaker: %s (path: %s)", taxonomy, history)
+            return {
+                "next_action": "FINISH",
+                "final_synthesis": f"HALTED: {taxonomy}.",
+                "failure_taxonomy": taxonomy,
                 "total_tokens": 0,
             }
 
