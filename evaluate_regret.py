@@ -12,11 +12,14 @@ Tokens come from mock formula (rule-based) or LLM response_metadata (when wired)
 
 Run from project root:
     python run_benchmark_sweep.py   # Generate results
-    python evaluate_regret.py       # Load JSON and compute oracle/regret
+    python evaluate_regret.py benchmark_workbench_results.json
+    python evaluate_regret.py results.json --export-json regret.json --export-csv regret.csv
 """
 
 from __future__ import annotations
 
+import argparse
+import csv
 import json
 import sys
 from dataclasses import dataclass
@@ -138,24 +141,51 @@ def load_results(path: Path | None = None) -> dict[str, Any]:
         return json.load(f)
 
 
-def main(results_path: Path | None = None) -> None:
-    data = load_results(results_path)
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Oracle baseline and routing regret from benchmark JSON")
+    parser.add_argument(
+        "results_json",
+        nargs="?",
+        type=Path,
+        default=DEFAULT_RESULTS_PATH,
+        help=f"Benchmark results file (default: {DEFAULT_RESULTS_PATH.name})",
+    )
+    parser.add_argument(
+        "--export-json",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="Write full evaluation report (summary + per-task rows) as JSON",
+    )
+    parser.add_argument(
+        "--export-csv",
+        type=Path,
+        default=None,
+        metavar="PATH",
+        help="Write per-task flat table (oracle, router, regret columns) as CSV",
+    )
+    args = parser.parse_args()
+
+    resolved: Path = args.results_json
+    data = load_results(resolved)
     metadata = data.get("metadata", {})
     tasks = data.get("tasks", [])
 
     print("=" * 70)
     print("Oracle Evaluation Harness (v2)")
-    print(f"Data: benchmark_results.json | Phase: {metadata.get('phase', '?')}")
+    print(f"Data: {resolved} | Phase: {metadata.get('phase', '?')}")
     print("=" * 70)
 
     evaluator = RegretEvaluator()
     perfect_count = 0
     total_regret_acc = 0.0
     tasks_with_router = 0
+    export_rows: list[dict[str, Any]] = []
 
     for item in tasks:
         task_id = item.get("task_id", "?")
-        description = item.get("description", "")[:60]
+        description = item.get("description", "")
+        description_short = description[:60]
         router_pred = item.get("router_prediction")
 
         results = [
@@ -173,8 +203,18 @@ def main(results_path: Path | None = None) -> None:
             continue
 
         oracle = evaluator.determine_oracle(results)
-        print(f"\n[{task_id}] {description}...")
+        print(f"\n[{task_id}] {description_short}...")
         print(f"  Oracle: {oracle.architecture} (acc={oracle.accuracy_score:.2f}, lat={oracle.latency_sec:.4f}s, tok={oracle.total_tokens})")
+
+        row: dict[str, Any] = {
+            "task_id": task_id,
+            "description": description,
+            "oracle_architecture": oracle.architecture,
+            "oracle_accuracy": oracle.accuracy_score,
+            "oracle_latency_sec": oracle.latency_sec,
+            "oracle_total_tokens": oracle.total_tokens,
+            "router_prediction": router_pred,
+        }
 
         if router_pred is not None:
             metrics = evaluator.calculate_regret(router_pred, results)
@@ -184,14 +224,60 @@ def main(results_path: Path | None = None) -> None:
             perfect_count += int(metrics["perfect_routing"])
             total_regret_acc += metrics["accuracy_regret"]
             tasks_with_router += 1
+            row.update(
+                {
+                    "perfect_routing": metrics["perfect_routing"],
+                    "accuracy_regret": metrics["accuracy_regret"],
+                    "latency_regret_sec": metrics["latency_regret_sec"],
+                    "token_regret": metrics["token_regret"],
+                }
+            )
         else:
-            print("  (No router_prediction in sweep; run full router for regret)")
+            print(
+                "  (No router_prediction — run: python scripts/annotate_router_predictions.py "
+                f"{resolved.name}  OR  python run_workbench_benchmark.py --annotate-router ...)"
+            )
+            row.update(
+                {
+                    "perfect_routing": None,
+                    "accuracy_regret": None,
+                    "latency_regret_sec": None,
+                    "token_regret": None,
+                }
+            )
 
+        export_rows.append(row)
+
+    summary: dict[str, Any] = {
+        "source": str(resolved.resolve()),
+        "phase": metadata.get("phase"),
+        "tasks_evaluated": len(export_rows),
+        "tasks_with_router_prediction": tasks_with_router,
+    }
     if tasks_with_router > 0:
+        summary["perfect_routing_count"] = perfect_count
+        summary["perfect_routing_rate"] = round(perfect_count / tasks_with_router, 4)
+        summary["avg_accuracy_regret"] = round(total_regret_acc / tasks_with_router, 4)
         print("\n" + "-" * 70)
         print(f"Perfect routing: {perfect_count}/{tasks_with_router} | Avg accuracy regret: {total_regret_acc / tasks_with_router:.2f}")
 
+    if args.export_json is not None:
+        report = {"summary": summary, "tasks": export_rows}
+        args.export_json.parent.mkdir(parents=True, exist_ok=True)
+        with args.export_json.open("w", encoding="utf-8") as f:
+            json.dump(report, f, indent=2)
+        print(f"\nWrote JSON report: {args.export_json.resolve()}")
+
+    if args.export_csv is not None:
+        fieldnames = list(export_rows[0].keys()) if export_rows else []
+        if fieldnames:
+            args.export_csv.parent.mkdir(parents=True, exist_ok=True)
+            with args.export_csv.open("w", newline="", encoding="utf-8") as f:
+                w = csv.DictWriter(f, fieldnames=fieldnames)
+                w.writeheader()
+                w.writerows(export_rows)
+            print(f"Wrote CSV report: {args.export_csv.resolve()}")
+
 
 if __name__ == "__main__":
-    path = Path(sys.argv[1]) if len(sys.argv) > 1 else None
-    main(path)
+    main()

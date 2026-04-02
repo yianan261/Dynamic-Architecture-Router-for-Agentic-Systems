@@ -5,6 +5,7 @@ langchain-openai>=0.2.0
 langchain-core>=0.3.0
 openai>=2.26.0
 pydantic>=2.0
+pandas>=2.0
 
 # For local LLM inference (run separately: python -m vllm.entrypoints.openai.api_server ...)
 # vllm>=0.6.0

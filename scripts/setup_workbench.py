@@ -56,8 +56,9 @@ def main() -> None:
     print("Next steps (WorkBench uses its own venv; versions differ from this project):")
     print("  cd vendor/WorkBench && python3 -m venv venv && source venv/bin/activate")
     print("  pip install -r requirements.txt")
-    print("  # API keys — see vendor/WorkBench/README.md")
-    print("  # 50-task slice (committed under benchmarks/ after --build-slice):")
+    print("  # API keys — see vendor/WorkBench/README.md (only if using upstream generate_results.py)")
+    print("  # This repo: python run_workbench_benchmark.py  (Llama via vLLM, SAS vs CMAS)")
+    print("  # 50-task slice (benchmarks/workbench_50_queries.csv after --build-slice):")
     p = (root / "benchmarks" / "workbench_50_queries.csv").resolve()
     print(f"  cd vendor/WorkBench")
     print(

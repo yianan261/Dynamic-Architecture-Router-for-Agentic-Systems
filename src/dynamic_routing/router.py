@@ -3,13 +3,14 @@ Dynamic Architecture Router: Meta-agent that classifies tasks and routes
 to the optimal topology (SAS, Centralized MAS, or Decentralized MAS).
 """
 
-from typing import Literal
+from typing import Literal, cast
 
 from langgraph.graph import END, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 
 from dynamic_routing.centralized_mas import centralized_mas_app
 from dynamic_routing.single_agent import single_agent_app
-from dynamic_routing.state import RouterState
+from dynamic_routing.state import CentralizedState, RouterState, SingleAgentState
 from dynamic_routing.vllm_integration import predict_routing_metadata
 
 
@@ -52,6 +53,25 @@ def route_task(
     return "decentralized_mas_node"
 
 
+_ROUTE_TO_DISPLAY: dict[str, str] = {
+    "single_agent_node": "Single-Agent System",
+    "centralized_mas_node": "Centralized MAS",
+    "decentralized_mas_node": "Decentralized MAS",
+}
+
+
+def predict_routed_architecture(user_query: str) -> str:
+    """
+    Routing-only: metadata + thresholds → display name (does not execute SAS/CMAS).
+    Used to populate router_prediction in benchmark JSON.
+    """
+    base: RouterState = {"user_query": user_query}
+    meta = dynamic_router_node(base)
+    state = cast(RouterState, {**base, **meta})
+    dest = route_task(state)
+    return _ROUTE_TO_DISPLAY[dest]
+
+
 # --- Architecture Execution Nodes ---
 
 
@@ -59,20 +79,27 @@ def single_agent_node(state: RouterState) -> dict:
     """Single-Agent System: invokes the ReAct-loop subgraph (unified memory)."""
     task = state.get("user_query", "")
     extras = {}
-    if state.get("extraction_overrides"):
-        extras["extraction_overrides"] = state["extraction_overrides"]
-    if state.get("required_tools"):
-        extras["required_tools"] = state["required_tools"]
+    extraction_overrides = state.get("extraction_overrides")
+    if extraction_overrides:
+        extras["extraction_overrides"] = extraction_overrides
+    required_tools = state.get("required_tools")
+    if required_tools:
+        extras["required_tools"] = required_tools
 
-    sas_result = single_agent_app.invoke({
-        "task": task,
-        "messages": [],
-        "executed_tools": [],
-        "pending_tool": "",
-        "final_response": "",
-        "total_tokens": 0,
-        **extras,
-    })
+    sas_result = single_agent_app.invoke(
+        cast(
+            SingleAgentState,
+            {
+                "task": task,
+                "messages": [],
+                "executed_tools": [],
+                "pending_tool": "",
+                "final_response": "",
+                "total_tokens": 0,
+                **extras,
+            },
+        )
+    )
 
     return {
         "selected_architecture": "Single-Agent System",
@@ -85,19 +112,26 @@ def centralized_mas_node(state: RouterState) -> dict:
     """Centralized MAS: invokes the hub-and-spoke subgraph."""
     task = state.get("user_query", "")
     extras = {}
-    if state.get("extraction_overrides"):
-        extras["extraction_overrides"] = state["extraction_overrides"]
-    if state.get("required_tools"):
-        extras["required_tools"] = state["required_tools"]
+    extraction_overrides = state.get("extraction_overrides")
+    if extraction_overrides:
+        extras["extraction_overrides"] = extraction_overrides
+    required_tools = state.get("required_tools")
+    if required_tools:
+        extras["required_tools"] = required_tools
 
-    mas_result = centralized_mas_app.invoke({
-        "task": task,
-        "aggregated_context": [],
-        "next_action": "",
-        "final_synthesis": "",
-        "total_tokens": 0,
-        **extras,
-    })
+    mas_result = centralized_mas_app.invoke(
+        cast(
+            CentralizedState,
+            {
+                "task": task,
+                "aggregated_context": [],
+                "next_action": "",
+                "final_synthesis": "",
+                "total_tokens": 0,
+                **extras,
+            },
+        )
+    )
 
     return {
         "selected_architecture": "Centralized MAS",
@@ -117,7 +151,9 @@ def decentralized_mas_node(state: RouterState) -> dict:
 # --- Build the Main Router Graph ---
 
 
-def build_router_graph() -> StateGraph:
+def build_router_graph() -> CompiledStateGraph[
+    RouterState, None, RouterState, RouterState
+]:
     """Build and compile the Dynamic Router graph."""
     workflow = StateGraph(RouterState)
 

@@ -10,8 +10,10 @@ import logging
 import os
 
 from langgraph.graph import END, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 
 from dynamic_routing.state import SingleAgentState
+from pydantic import SecretStr
 
 # ---------------------------------------------------------------------------
 # Shared constants
@@ -40,7 +42,9 @@ MAX_REACT_ITERATIONS = 15
 # ===========================================================================
 
 
-def _build_llm_sas_graph() -> StateGraph:
+def _build_llm_sas_graph() -> CompiledStateGraph[
+    SingleAgentState, None, SingleAgentState, SingleAgentState
+]:
     """Build SAS graph powered by Llama-3.1 ReAct agent."""
     from langchain_openai import ChatOpenAI
     from langgraph.prebuilt import create_react_agent
@@ -49,7 +53,7 @@ def _build_llm_sas_graph() -> StateGraph:
 
     worker_llm = ChatOpenAI(
         model=os.environ.get("VLLM_WORKER_MODEL", "meta-llama/Llama-3.1-8B-Instruct"),
-        api_key=os.environ.get("OPENAI_API_KEY", "EMPTY"),
+        api_key=SecretStr(os.environ.get("OPENAI_API_KEY", "EMPTY")),
         base_url=os.environ.get("VLLM_WORKER_URL", "http://localhost:8001/v1"),
         temperature=0.1,
     ).bind_tools(PCAB_TOOLS, parallel_tool_calls=False)
@@ -63,7 +67,7 @@ def _build_llm_sas_graph() -> StateGraph:
     def sas_llm_node(state: SingleAgentState) -> dict:
         try:
             result = react_agent.invoke(
-                {"messages": [("user", state["task"])]},
+                {"messages": [("user", state.get("task", ""))]},
                 config={"recursion_limit": MAX_REACT_ITERATIONS},
             )
         except Exception as e:
@@ -92,9 +96,10 @@ def _build_llm_sas_graph() -> StateGraph:
                 tokens += usage.get("total_tokens", 0)
             if getattr(msg, "tool_calls", None):
                 for call in msg.tool_calls:
-                    mapped = LLM_TOOL_TO_SAS_CALL.get(call["name"], call["name"])
+                    tool_name = str(call.get("name") or "")
+                    mapped = LLM_TOOL_TO_SAS_CALL.get(tool_name, tool_name)
                     executed.append(mapped)
-                    path.append(call["name"])
+                    path.append(tool_name)
                     sig = f"{mapped}({call.get('args', {})})"
                     tool_signatures.append(sig)
 
@@ -149,7 +154,7 @@ def _sas_reasoning_node(state: SingleAgentState) -> dict:
         extract_drive_query,
     )
 
-    task = state["task"]
+    task = state.get("task", "")
     task_lower = task.lower()
     required_tools = state.get("required_tools") or []
     executed = set(state.get("executed_tools") or [])
@@ -256,7 +261,9 @@ def _sas_router(state: SingleAgentState):
     return "tools"
 
 
-def _build_rule_based_sas_graph() -> StateGraph:
+def _build_rule_based_sas_graph() -> CompiledStateGraph[
+    SingleAgentState, None, SingleAgentState, SingleAgentState
+]:
     builder = StateGraph(SingleAgentState)
     builder.add_node("reason", _sas_reasoning_node)
     builder.add_node("tools", _sas_tool_node)
@@ -271,7 +278,9 @@ def _build_rule_based_sas_graph() -> StateGraph:
 # ===========================================================================
 
 
-def build_single_agent_graph():
+def build_single_agent_graph() -> CompiledStateGraph[
+    SingleAgentState, None, SingleAgentState, SingleAgentState
+]:
     if _USE_LLM:
         return _build_llm_sas_graph()
     return _build_rule_based_sas_graph()

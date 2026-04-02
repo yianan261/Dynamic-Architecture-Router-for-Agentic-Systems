@@ -11,8 +11,11 @@ import logging
 import os
 
 from langgraph.graph import END, StateGraph
+from langgraph.graph.state import CompiledStateGraph
 
 from dynamic_routing.state import CentralizedState
+from pydantic import SecretStr
+
 
 _REQUIRED_TOOL_TO_WORKER: dict[str, str] = {
     "get_contact_preferences": "contacts_agent",
@@ -32,7 +35,9 @@ LOOP_SCORE_THRESHOLD = 0.5
 # ===========================================================================
 
 
-def _build_llm_cmas_graph() -> StateGraph:
+def _build_llm_cmas_graph() -> CompiledStateGraph[
+    CentralizedState, None, CentralizedState, CentralizedState
+]:
     from langchain_openai import ChatOpenAI
     from langgraph.prebuilt import create_react_agent
 
@@ -45,7 +50,7 @@ def _build_llm_cmas_graph() -> StateGraph:
 
     base_llm = ChatOpenAI(
         model=os.environ.get("VLLM_WORKER_MODEL", "meta-llama/Llama-3.1-8B-Instruct"),
-        api_key=os.environ.get("OPENAI_API_KEY", "EMPTY"),
+        api_key=SecretStr(os.environ.get("OPENAI_API_KEY", "EMPTY")),
         base_url=os.environ.get("VLLM_WORKER_URL", "http://localhost:8001/v1"),
         temperature=0.1,
     )
@@ -92,16 +97,16 @@ def _build_llm_cmas_graph() -> StateGraph:
         }
 
     def llm_calendar_agent(state: CentralizedState) -> dict:
-        return _run_llm_worker(cal_react, state["task"], "CALENDAR")
+        return _run_llm_worker(cal_react, state.get("task", ""), "CALENDAR")
 
     def llm_drive_agent(state: CentralizedState) -> dict:
-        return _run_llm_worker(drv_react, state["task"], "DRIVE")
+        return _run_llm_worker(drv_react, state.get("task", ""), "DRIVE")
 
     def llm_commute_agent(state: CentralizedState) -> dict:
-        return _run_llm_worker(com_react, state["task"], "COMMUTE")
+        return _run_llm_worker(com_react, state.get("task", ""), "COMMUTE")
 
     def llm_contacts_agent(state: CentralizedState) -> dict:
-        return _run_llm_worker(con_react, state["task"], "CONTACTS")
+        return _run_llm_worker(con_react, state.get("task", ""), "CONTACTS")
 
     _WORKER_DESCRIPTIONS = {
         "calendar_agent": "Fetches calendar events and schedules",
@@ -115,6 +120,13 @@ def _build_llm_cmas_graph() -> StateGraph:
             usage = response.response_metadata.get("token_usage") or {}
             return usage.get("total_tokens", 0)
         return 0
+
+    def _llm_content_str(content: object) -> str:
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            return " ".join(str(c) for c in content)
+        return str(content) if content is not None else ""
 
     def _detect_cycle(history: list[str]) -> str | None:
         """Return a taxonomy tag if the execution path shows a cyclic failure."""
@@ -137,7 +149,7 @@ def _build_llm_cmas_graph() -> StateGraph:
     def llm_supervisor_node(state: CentralizedState) -> dict:
         context = state.get("aggregated_context", [])
         context_str = str(context).lower()
-        task = state["task"]
+        task = state.get("task", "")
         history = state.get("execution_path", [])
 
         # --- Circuit Breaker: Total Turn Limit ---
@@ -211,7 +223,7 @@ def _build_llm_cmas_graph() -> StateGraph:
         )
         response = base_llm.invoke(dispatch_prompt)
         tokens = _extract_tokens(response)
-        text = response.content.strip()
+        text = _llm_content_str(response.content).strip()
 
         reasoning = ""
         action_str = ""
@@ -265,7 +277,8 @@ def _build_llm_cmas_graph() -> StateGraph:
         }
 
     def supervisor_router(state: CentralizedState):
-        return END if state.get("next_action") == "FINISH" else state["next_action"]
+        nxt = state.get("next_action")
+        return END if nxt == "FINISH" or nxt is None else nxt
 
     builder = StateGraph(CentralizedState)
     builder.add_node("supervisor", llm_supervisor_node)
@@ -335,7 +348,7 @@ def _rule_contacts_agent(state: CentralizedState) -> dict:
 
 def _rule_supervisor_node(state: CentralizedState) -> dict:
     context = state.get("aggregated_context", [])
-    task = state["task"].lower()
+    task = state.get("task", "").lower()
     context_str = str(context).lower()
     required_tools = state.get("required_tools") or []
 
@@ -374,10 +387,13 @@ def _rule_supervisor_node(state: CentralizedState) -> dict:
 
 
 def _rule_supervisor_router(state: CentralizedState):
-    return END if state.get("next_action") == "FINISH" else state["next_action"]
+    nxt = state.get("next_action")
+    return END if nxt == "FINISH" or nxt is None else nxt
 
 
-def _build_rule_based_cmas_graph() -> StateGraph:
+def _build_rule_based_cmas_graph() -> CompiledStateGraph[
+    CentralizedState, None, CentralizedState, CentralizedState
+]:
     builder = StateGraph(CentralizedState)
     builder.add_node("supervisor", _rule_supervisor_node)
     builder.add_node("calendar_agent", _rule_calendar_agent)
@@ -398,7 +414,9 @@ def _build_rule_based_cmas_graph() -> StateGraph:
 # ===========================================================================
 
 
-def build_centralized_mas_graph():
+def build_centralized_mas_graph() -> CompiledStateGraph[
+    CentralizedState, None, CentralizedState, CentralizedState
+]:
     if _USE_LLM:
         return _build_llm_cmas_graph()
     return _build_rule_based_cmas_graph()

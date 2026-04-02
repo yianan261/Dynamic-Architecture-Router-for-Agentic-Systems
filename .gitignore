@@ -29,6 +29,7 @@ pcab_environment.db
 
 # Benchmark sweep output (generated)
 benchmark_results.json
+benchmark_workbench_results.json
 
 # WorkBench upstream clone (run scripts/setup_workbench.py)
 vendor/WorkBench/
