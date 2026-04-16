@@ -12,8 +12,8 @@ import os
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
+from dynamic_routing.chat_models import get_worker_chat_model
 from dynamic_routing.state import SingleAgentState
-from pydantic import SecretStr
 
 # ---------------------------------------------------------------------------
 # Shared constants
@@ -46,17 +46,13 @@ def _build_llm_sas_graph() -> CompiledStateGraph[
     SingleAgentState, None, SingleAgentState, SingleAgentState
 ]:
     """Build SAS graph powered by Llama-3.1 ReAct agent."""
-    from langchain_openai import ChatOpenAI
     from langgraph.prebuilt import create_react_agent
 
     from dynamic_routing.agent_tools import LLM_TOOL_TO_SAS_CALL, PCAB_TOOLS
 
-    worker_llm = ChatOpenAI(
-        model=os.environ.get("VLLM_WORKER_MODEL", "meta-llama/Llama-3.1-8B-Instruct"),
-        api_key=SecretStr(os.environ.get("OPENAI_API_KEY", "EMPTY")),
-        base_url=os.environ.get("VLLM_WORKER_URL", "http://localhost:8001/v1"),
-        temperature=0.1,
-    ).bind_tools(PCAB_TOOLS, parallel_tool_calls=False)
+    worker_llm = get_worker_chat_model(temperature=0.1).bind_tools(
+        PCAB_TOOLS, parallel_tool_calls=False
+    )
 
     react_agent = create_react_agent(
         worker_llm,

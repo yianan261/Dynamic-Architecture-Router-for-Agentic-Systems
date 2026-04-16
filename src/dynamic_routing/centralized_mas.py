@@ -13,8 +13,8 @@ import os
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
+from dynamic_routing.chat_models import get_worker_chat_model
 from dynamic_routing.state import CentralizedState
-from pydantic import SecretStr
 
 
 _REQUIRED_TOOL_TO_WORKER: dict[str, str] = {
@@ -38,7 +38,6 @@ LOOP_SCORE_THRESHOLD = 0.5
 def _build_llm_cmas_graph() -> CompiledStateGraph[
     CentralizedState, None, CentralizedState, CentralizedState
 ]:
-    from langchain_openai import ChatOpenAI
     from langgraph.prebuilt import create_react_agent
 
     from dynamic_routing.agent_tools import (
@@ -48,12 +47,7 @@ def _build_llm_cmas_graph() -> CompiledStateGraph[
         drive_tool,
     )
 
-    base_llm = ChatOpenAI(
-        model=os.environ.get("VLLM_WORKER_MODEL", "meta-llama/Llama-3.1-8B-Instruct"),
-        api_key=SecretStr(os.environ.get("OPENAI_API_KEY", "EMPTY")),
-        base_url=os.environ.get("VLLM_WORKER_URL", "http://localhost:8001/v1"),
-        temperature=0.1,
-    )
+    base_llm = get_worker_chat_model(temperature=0.1)
 
     cal_react = create_react_agent(base_llm.bind_tools([calendar_tool], parallel_tool_calls=False), [calendar_tool], prompt="You are a Calendar Agent. Fetch events and return a concise summary.")
     drv_react = create_react_agent(base_llm.bind_tools([drive_tool], parallel_tool_calls=False), [drive_tool], prompt="You are a Drive Agent. Search notes and summarize.")

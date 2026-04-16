@@ -13,7 +13,8 @@ Tokens come from mock formula (rule-based) or LLM response_metadata (when wired)
 Run from project root:
     python run_benchmark_sweep.py   # Generate results
     python evaluate_regret.py benchmark_workbench_results.json
-    python evaluate_regret.py results.json --export-json regret.json --export-csv regret.csv
+    python evaluate_regret.py benchmark_workbench_results.json --export-json regret.json --export-csv regret.csv
+        # writes results/regret_YYYYMMDD_HHMMSS.json and results/regret_YYYYMMDD_HHMMSS.csv
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ import argparse
 import csv
 import json
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -29,7 +31,20 @@ from typing import Any
 project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(project_root / "src"))
 
+from dynamic_routing.dotenv_util import load_project_root_dotenv  # noqa: E402
+
+load_project_root_dotenv()
+
 DEFAULT_RESULTS_PATH = project_root / "benchmark_results.json"
+RESULTS_DIR = project_root / "results"
+
+
+def _timestamped_export_path(user_path: Path, ts: str | None = None) -> Path:
+    """``results/<stem>_YYYYMMDD_HHMMSS<suffix>`` under the project root."""
+    stamp = ts if ts is not None else time.strftime("%Y%m%d_%H%M%S")
+    stem = user_path.stem
+    suffix = user_path.suffix if user_path.suffix else ".out"
+    return RESULTS_DIR / f"{stem}_{stamp}{suffix}"
 
 
 @dataclass
@@ -154,15 +169,15 @@ def main() -> None:
         "--export-json",
         type=Path,
         default=None,
-        metavar="PATH",
-        help="Write full evaluation report (summary + per-task rows) as JSON",
+        metavar="STEM",
+        help="Write report JSON under results/ as <stem>_YYYYMMDD_HHMMSS.json",
     )
     parser.add_argument(
         "--export-csv",
         type=Path,
         default=None,
-        metavar="PATH",
-        help="Write per-task flat table (oracle, router, regret columns) as CSV",
+        metavar="STEM",
+        help="Write CSV under results/ as <stem>_YYYYMMDD_HHMMSS.csv",
     )
     args = parser.parse_args()
 
@@ -261,22 +276,28 @@ def main() -> None:
         print("\n" + "-" * 70)
         print(f"Perfect routing: {perfect_count}/{tasks_with_router} | Avg accuracy regret: {total_regret_acc / tasks_with_router:.2f}")
 
+    export_ts: str | None = None
+    if args.export_json is not None or args.export_csv is not None:
+        export_ts = time.strftime("%Y%m%d_%H%M%S")
+
     if args.export_json is not None:
         report = {"summary": summary, "tasks": export_rows}
-        args.export_json.parent.mkdir(parents=True, exist_ok=True)
-        with args.export_json.open("w", encoding="utf-8") as f:
+        json_path = _timestamped_export_path(args.export_json, export_ts)
+        json_path.parent.mkdir(parents=True, exist_ok=True)
+        with json_path.open("w", encoding="utf-8") as f:
             json.dump(report, f, indent=2)
-        print(f"\nWrote JSON report: {args.export_json.resolve()}")
+        print(f"\nWrote JSON report: {json_path.resolve()}")
 
     if args.export_csv is not None:
         fieldnames = list(export_rows[0].keys()) if export_rows else []
         if fieldnames:
-            args.export_csv.parent.mkdir(parents=True, exist_ok=True)
-            with args.export_csv.open("w", newline="", encoding="utf-8") as f:
+            csv_path = _timestamped_export_path(args.export_csv, export_ts)
+            csv_path.parent.mkdir(parents=True, exist_ok=True)
+            with csv_path.open("w", newline="", encoding="utf-8") as f:
                 w = csv.DictWriter(f, fieldnames=fieldnames)
                 w.writeheader()
                 w.writerows(export_rows)
-            print(f"Wrote CSV report: {args.export_csv.resolve()}")
+            print(f"Wrote CSV report: {csv_path.resolve()}")
 
 
 if __name__ == "__main__":

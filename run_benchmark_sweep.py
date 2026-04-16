@@ -18,14 +18,20 @@ import os
 import sys
 import time
 from pathlib import Path
+from typing import cast
 
 project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(project_root / "src"))
+
+from dynamic_routing.dotenv_util import load_project_root_dotenv
+
+load_project_root_dotenv()
 
 from dynamic_routing.centralized_mas import centralized_mas_app
 from dynamic_routing.pcab import get_db_path
 from dynamic_routing.pcab_tasks import get_pcab_tasks
 from dynamic_routing.single_agent import single_agent_app
+from dynamic_routing.state import CentralizedState, SingleAgentState
 
 # Map PCAB required_tools to the internal context tags emitted by CMAS workers
 _TOOL_TO_CMAS_TAG = {
@@ -106,7 +112,7 @@ def main() -> None:
         }
         try:
             start = time.perf_counter()
-            sas_result = single_agent_app.invoke(sas_state)
+            sas_result = single_agent_app.invoke(cast(SingleAgentState, sas_state))
             sas_latency = time.perf_counter() - start
             sas_executed = sas_result.get("executed_tools") or []
             sas_accuracy = calculate_sas_accuracy(task.required_tools, sas_executed)
@@ -138,7 +144,7 @@ def main() -> None:
         }
         try:
             start = time.perf_counter()
-            cmas_result = centralized_mas_app.invoke(cmas_state)
+            cmas_result = centralized_mas_app.invoke(cast(CentralizedState, cmas_state))
             cmas_latency = time.perf_counter() - start
             cmas_context = cmas_result.get("aggregated_context") or []
             cmas_accuracy = calculate_cmas_accuracy(task.required_tools, cmas_context)
