@@ -23,7 +23,11 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from dynamic_routing.router import predict_routed_architecture  # noqa: E402
+from dynamic_routing.dotenv_util import load_project_root_dotenv 
+
+load_project_root_dotenv()
+
+from dynamic_routing.router import predict_routed_architecture 
 
 
 def main() -> None:
@@ -47,13 +51,21 @@ def main() -> None:
         data = json.load(f)
 
     tasks = data.get("tasks", [])
+    ok = 0
+    fail = 0
     for item in tasks:
         q = item.get("description") or ""
-        item["router_prediction"] = predict_routed_architecture(q)
+        try:
+            item["router_prediction"] = predict_routed_architecture(q)
+            ok += 1
+        except Exception as e:
+            print(f"  [router-annotate] {item.get('task_id', '?')}: {str(e)[:120]}; defaulting to Single-Agent System")
+            item["router_prediction"] = "Single-Agent System"
+            fail += 1
 
     with out.open("w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
-    print(f"Wrote {out.resolve()} with router_prediction on {len(tasks)} tasks")
+    print(f"Wrote {out.resolve()} with router_prediction on {len(tasks)} tasks ({ok} ok, {fail} fallback)")
     print("Next: python evaluate_regret.py", out)
 
 

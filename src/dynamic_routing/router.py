@@ -35,22 +35,26 @@ def route_task(
     Applies quantitative scaling thresholds from the literature:
     - Tool-coordination trade-off (β=-0.267): tool-heavy → SAS
     - Parallelization benefit: decomposable tasks → Centralized MAS
-    - Open-ended consensus: exploratory tasks → Decentralized MAS
+    - Exploratory / open-ended tasks → Decentralized MAS (placeholder today)
+
+    Note: Decentralized MAS is an unimplemented placeholder, so the default
+    must NOT be DMAS (it would guarantee 0 accuracy). Default is SAS, which
+    is also the Science-of-Scaling matched-compute baseline.
     """
     tools = state.get("estimated_tool_count", 0)
     depth = state.get("estimated_sequential_depth", 0)
     parallelism = state.get("parallelization_factor", 0.0)
 
-    # Threshold A: Tool-heavy or deep sequential constraints → SAS
     if tools >= 12 or depth > 5:
         return "single_agent_node"
 
-    # Threshold B: High parallelization, moderate tools → Centralized MAS
     if parallelism > 0.6 and tools < 12:
         return "centralized_mas_node"
 
-    # Threshold C: Default → Decentralized MAS for peer debate
-    return "decentralized_mas_node"
+    if parallelism > 0.85:
+        return "decentralized_mas_node"
+
+    return "single_agent_node"
 
 
 _ROUTE_TO_DISPLAY: dict[str, str] = {

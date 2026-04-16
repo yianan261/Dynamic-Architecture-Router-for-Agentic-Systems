@@ -7,16 +7,19 @@ grades with outcome-centric equality (same idea as WorkBench is_correct).
 
 Prerequisites:
   - Clone WorkBench: python scripts/setup_workbench.py
-  - vLLM worker: set VLLM_WORKER_URL (default http://localhost:8001/v1)
+  - LLM_BACKEND=vllm (default): VLLM_WORKER_URL + VLLM_WORKER_MODEL
+  - LLM_BACKEND=openai: OPENAI_API_KEY, OPENAI_WORKER_MODEL=gpt-5.4-mini (optional OPENAI_BASE_URL)
+  - LLM_BACKEND=google: GOOGLE_API_KEY, GOOGLE_WORKER_MODEL=gemini-3.1-flash-lite-preview
+  - Optional ROUTER_LLM_BACKEND to use a different provider for routing metadata
 
-Outputs benchmark_workbench_results.json by default (does not overwrite PCAB results).
+Writes timestamped files under results/ (e.g. results/benchmark_workbench_results_YYYYMMDD_HHMMSS.json).
 
 Run from project root:
   python run_workbench_benchmark.py
   python run_workbench_benchmark.py path/to/custom.csv --output my_results.json
-  python run_workbench_benchmark.py --write-csv   # also writes my_results.csv (same stem as -o)
+  python run_workbench_benchmark.py --write-csv   # same run id: results/<stem>_TS.json + .csv
   python run_workbench_benchmark.py --annotate-router   # fills router_prediction (routing LLM :8000)
-  python evaluate_regret.py benchmark_workbench_results.json --export-json regret.json --export-csv regret.csv
+  python evaluate_regret.py results/<latest>.json --export-json regret.json --export-csv regret.csv
 
 Results: JSON is canonical; optional flat CSV is for paper tables (input CSV is not modified).
 """
@@ -35,6 +38,10 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent
 sys.path.insert(0, str(project_root / "src"))
 
+from dynamic_routing.dotenv_util import load_project_root_dotenv  # noqa: E402
+
+load_project_root_dotenv()
+
 from dynamic_routing.workbench_env import (  # noqa: E402
     get_tools_for_domains,
     parse_domains_cell,
@@ -46,6 +53,14 @@ from dynamic_routing.workbench_runner import run_workbench_cmas, run_workbench_s
 
 DEFAULT_CSV = project_root / "benchmarks" / "workbench_50_queries.csv"
 DEFAULT_OUTPUT = project_root / "benchmark_workbench_results.json"
+RESULTS_DIR = project_root / "results"
+
+
+def _timestamped_results_path(user_path: Path, ts: str) -> Path:
+    """results/<stem>_YYYYMMDD_HHMMSS<suffix> (suffix from user_path, default .json)."""
+    stem = user_path.stem
+    suffix = user_path.suffix if user_path.suffix else ".json"
+    return RESULTS_DIR / f"{stem}_{ts}{suffix}"
 
 
 def _require_workbench() -> None:
@@ -109,9 +124,25 @@ def _write_flat_table_csv(path: Path, task_results: list[dict]) -> None:
 
 
 def _require_llm_env() -> None:
-    """Inform if worker URL is default (user may need vLLM)."""
-    url = os.environ.get("VLLM_WORKER_URL", "http://localhost:8001/v1")
-    print(f"Using VLLM_WORKER_URL={url}  model={os.environ.get('VLLM_WORKER_MODEL', 'meta-llama/Llama-3.1-8B-Instruct')}")
+    """Log active LLM backend and main model env (see dynamic_routing.chat_models)."""
+    backend = os.environ.get("LLM_BACKEND", "vllm").strip().lower()
+    if backend == "openai":
+        print(
+            "Using LLM_BACKEND=openai "
+            f"model={os.environ.get('OPENAI_WORKER_MODEL', 'gpt-5.4-mini')} "
+            f"base={os.environ.get('OPENAI_BASE_URL', 'https://api.openai.com/v1')}"
+        )
+    elif backend == "google":
+        print(
+            "Using LLM_BACKEND=google "
+            f"model={os.environ.get('GOOGLE_WORKER_MODEL', 'gemini-3.1-flash-lite-preview')}"
+        )
+    else:
+        url = os.environ.get("VLLM_WORKER_URL", "http://localhost:8001/v1")
+        print(
+            f"Using LLM_BACKEND=vllm VLLM_WORKER_URL={url} "
+            f"model={os.environ.get('VLLM_WORKER_MODEL', 'meta-llama/Llama-3.1-8B-Instruct')}"
+        )
 
 
 def main() -> None:
@@ -122,26 +153,40 @@ def main() -> None:
         default=str(DEFAULT_CSV),
         help=f"Queries CSV (default: {DEFAULT_CSV})",
     )
-    parser.add_argument("--output", "-o", default=str(DEFAULT_OUTPUT), help="Output JSON path")
+    parser.add_argument(
+        "--output",
+        "-o",
+        default=str(DEFAULT_OUTPUT.name),
+        help=f"JSON filename stem (default: {DEFAULT_OUTPUT.name}); written under results/ with timestamp",
+    )
     parser.add_argument(
         "--write-csv",
         action="store_true",
-        help="Also write a flat table next to the JSON (same path, .csv extension).",
+        help="Also write results/<same_stem_as_json>_TS.csv (same timestamp as JSON).",
     )
     parser.add_argument(
         "--csv",
         dest="csv_out",
         default="",
-        metavar="PATH",
-        help="Explicit path for the flat results table CSV (overrides --write-csv stem).",
+        metavar="STEM",
+        help="CSV filename stem under results/ with same timestamp (overrides default table name).",
     )
     parser.add_argument(
         "--annotate-router",
+        dest="annotate_router",
         action="store_true",
+        default=True,
         help=(
-            "After sweep, set router_prediction per task via predict_routed_architecture "
-            "(Mistral @ VLLM_BASE_URL :8000 or keyword fallback). Skips separate annotate script."
+            "(default ON) After sweep, set router_prediction per task via "
+            "predict_routed_architecture. Each call is wrapped in try/except and falls "
+            "back to 'Single-Agent System' if the routing LLM fails."
         ),
+    )
+    parser.add_argument(
+        "--no-annotate-router",
+        dest="annotate_router",
+        action="store_false",
+        help="Leave router_prediction as None (you can still run scripts/annotate_router_predictions.py later).",
     )
     parser.add_argument("--limit", type=int, default=0, help="Run only first N tasks (0 = all)")
     args = parser.parse_args()
@@ -236,10 +281,22 @@ def main() -> None:
         from dynamic_routing.router import predict_routed_architecture  # noqa: E402
 
         print("\nAnnotating router_prediction (routing meta-LLM / fallback)...")
+        ok = 0
+        fail = 0
         for item in task_results:
-            item["router_prediction"] = predict_routed_architecture(item.get("description") or "")
+            desc = item.get("description") or ""
+            try:
+                item["router_prediction"] = predict_routed_architecture(desc)
+                ok += 1
+            except Exception as e:
+                print(f"  [router-annotate] {item.get('task_id', '?')}: {str(e)[:120]}; defaulting to Single-Agent System")
+                item["router_prediction"] = "Single-Agent System"
+                fail += 1
+        print(f"  router annotations: {ok} ok, {fail} fell back to SAS default")
 
-    out_path = Path(args.output)
+    run_ts = time.strftime("%Y%m%d_%H%M%S")
+    out_path = _timestamped_results_path(Path(args.output), run_ts)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "metadata": {
             "sweep_timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -258,12 +315,13 @@ def main() -> None:
     print(f"\nWrote {out_path.resolve()}")
 
     if args.csv_out:
-        csv_table = Path(args.csv_out)
+        csv_table = _timestamped_results_path(Path(args.csv_out), run_ts)
     elif args.write_csv:
         csv_table = out_path.with_suffix(".csv")
     else:
         csv_table = None
     if csv_table is not None:
+        csv_table.parent.mkdir(parents=True, exist_ok=True)
         _write_flat_table_csv(csv_table, task_results)
         print(f"Wrote table CSV {csv_table.resolve()}")
 

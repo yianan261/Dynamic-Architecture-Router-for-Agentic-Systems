@@ -1,20 +1,33 @@
 """
-Run Single-Agent and Centralized MAS on WorkBench tools + sandbox (Llama via vLLM).
+Run Single-Agent and Centralized MAS on WorkBench tools + sandbox.
 
 Uses LangGraph create_react_agent with WorkBench LangChain tools. Grading is
 outcome-centric (DataFrame equality after executing predicted vs gold calls).
+
+Design notes (motivated by WorkBench paper + "Science of Scaling" SAS baseline):
+
+* Anti-hallucination: the system prompt explicitly forbids passing a tool call
+  (or pseudo-code like ``email.get_most_recent_email_id()``) as a string
+  argument; IDs must be discovered first via search/getter tools, then passed
+  as literal values.
+* Pagination: search_* tools in WorkBench cap at ~5 results. The prompt tells
+  the agent to loop until the cap is hit and nothing new is found.
+* Matched-compute SAS: recursion limit raised to 40 so SAS is not artificially
+  starved of reasoning steps when compared to CMAS.
+* Token accounting: langchain-core >=1.0 exposes usage on ``msg.usage_metadata``
+  (with ``total_tokens`` / ``input_tokens`` / ``output_tokens``). We read that
+  first, then fall back to ``response_metadata.token_usage`` for older paths.
 """
 
 from __future__ import annotations
 
 import logging
-import os
+import re
 import time
 from typing import Any
 
 from langgraph.graph import END, StateGraph
-from pydantic import SecretStr
-
+from dynamic_routing.chat_models import get_worker_chat_model, llm_backend
 from dynamic_routing.state import CentralizedState
 from dynamic_routing.workbench_env import (
     get_tools_for_domains,
@@ -22,21 +35,97 @@ from dynamic_routing.workbench_env import (
     workbench_system_prompt_prefix,
 )
 
-MAX_REACT_ITERATIONS = 22
-MAX_CMAS_SUPERVISOR_TURNS = 12
-MAX_WORKER_REACT = 16
+MAX_REACT_ITERATIONS = 40
+MAX_CMAS_SUPERVISOR_TURNS = 20
+MAX_WORKER_REACT = 30
 LOOP_SCORE_THRESHOLD = 0.5
+
+_WB_TOOL_SAFE_TO_CANONICAL: dict[str, str] = {}
+
+
+def _hosted_api_needs_safe_tool_names() -> bool:
+    return llm_backend() in ("openai", "google")
+
+
+def _clear_wb_tool_name_remap() -> None:
+    _WB_TOOL_SAFE_TO_CANONICAL.clear()
+
+
+def _prepare_tools_for_hosted_api(tools: list[Any]) -> list[Any]:
+    """Copy tools with dot-free names for hosted LLM APIs; fill remap for grading strings."""
+    if not _hosted_api_needs_safe_tool_names():
+        return tools
+    out: list[Any] = []
+    for t in tools:
+        name = t.name
+        if "." in name:
+            safe = name.replace(".", "_")
+            _WB_TOOL_SAFE_TO_CANONICAL[safe] = name
+            out.append(t.model_copy(update={"name": safe}))
+        else:
+            out.append(t)
+    return out
 
 
 def _worker_llm():
-    from langchain_openai import ChatOpenAI
+    return get_worker_chat_model(temperature=0.1)
 
-    return ChatOpenAI(
-        model=os.environ.get("VLLM_WORKER_MODEL", "meta-llama/Llama-3.1-8B-Instruct"),
-        api_key=SecretStr(os.environ.get("OPENAI_API_KEY", "EMPTY")),
-        base_url=os.environ.get("VLLM_WORKER_URL", "http://localhost:8001/v1"),
-        temperature=0.1,
+
+# ---------------------------------------------------------------------------
+# Prompt engineering (WorkBench-specific)
+# ---------------------------------------------------------------------------
+
+WORKBENCH_AGENT_GUIDELINES = """You are an efficient workplace assistant executing tasks against a realistic sandbox (email, calendar, analytics, project management, CRM, company directory).
+
+Tool-use rules (read carefully — violating these is the #1 failure mode):
+1. NEVER invent, guess, or compose identifiers (email IDs, event IDs, customer IDs, task IDs, dates, timestamps). If you don't already have an exact value, CALL A SEARCH / GET TOOL FIRST to obtain it, then pass the returned value as a plain string literal.
+2. NEVER pass a function call, Python expression, f-string, or pseudo-code as a tool argument. For example, do NOT set `email_id="email.get_most_recent_email_id()"` — call that tool, read the returned ID, then set `email_id="<the actual id string>"`.
+3. Tool arguments are literals only. Dates are "YYYY-MM-DD" strings, times are "HH:MM" strings, names use the exact casing returned by the directory/search tool.
+4. Pagination: many `search_*` / list tools return at most 5 items per call. If the task requires operating on potentially more matches, keep calling with a refined filter (next page, different sender, narrower date range) until you see fewer than 5 results or the set stops changing.
+5. Only emit side-effect calls (delete, update, send, create, move, reassign, plot) that the user explicitly asked for. Redundant or speculative side-effects will fail grading.
+6. Do exactly one tool call per step unless the tools are independent. Chain dependent calls — read the result, then act.
+7. When the task is complete, stop calling tools and produce a short final message. Do not emit further tool calls "just in case".
+
+If a tool returns an error or an empty result, try a different, more specific query before giving up. Do NOT repeat the same call with the same arguments.
+"""
+
+
+def _sas_system_prompt() -> str:
+    return workbench_system_prompt_prefix() + WORKBENCH_AGENT_GUIDELINES
+
+
+def _worker_system_prompt(specialization: str) -> str:
+    return (
+        workbench_system_prompt_prefix()
+        + WORKBENCH_AGENT_GUIDELINES
+        + f"\nYour specialization for this task: {specialization}\n"
     )
+
+
+# ---------------------------------------------------------------------------
+# Telemetry helpers
+# ---------------------------------------------------------------------------
+
+
+def _tokens_from_message(msg: Any) -> int:
+    """Read token usage from either msg.usage_metadata (langchain >=1.0) or
+    msg.response_metadata.token_usage (older / OpenAI path)."""
+    um = getattr(msg, "usage_metadata", None)
+    if isinstance(um, dict):
+        tt = um.get("total_tokens")
+        if isinstance(tt, int) and tt > 0:
+            return tt
+        it = int(um.get("input_tokens", 0) or 0)
+        ot = int(um.get("output_tokens", 0) or 0)
+        if it or ot:
+            return it + ot
+    rm = getattr(msg, "response_metadata", None) or {}
+    tu = rm.get("token_usage") or {}
+    return int(tu.get("total_tokens", 0) or 0)
+
+
+def _aggregate_tokens(messages: list[Any]) -> int:
+    return sum(_tokens_from_message(m) for m in messages)
 
 
 def tool_calls_to_strings(messages: list) -> list[str]:
@@ -46,6 +135,7 @@ def tool_calls_to_strings(messages: list) -> list[str]:
         tcs = getattr(msg, "tool_calls", None) or []
         for call in tcs:
             name = call["name"]
+            name = _WB_TOOL_SAFE_TO_CANONICAL.get(name, name)
             args = call.get("args") or {}
             if not isinstance(args, dict):
                 continue
@@ -54,18 +144,30 @@ def tool_calls_to_strings(messages: list) -> list[str]:
     return out
 
 
+def _final_text(messages: list[Any]) -> str:
+    for msg in reversed(messages):
+        content = getattr(msg, "content", "")
+        if content:
+            return str(content)
+    return ""
+
+
+# ---------------------------------------------------------------------------
+# SAS
+# ---------------------------------------------------------------------------
+
+
 def run_workbench_sas(task: str, tools: list) -> dict[str, Any]:
     """Single ReAct agent with full tool set for this task's domains."""
     from langgraph.prebuilt import create_react_agent
 
     reset_workbench_state()
-    base_prompt = (
-        workbench_system_prompt_prefix()
-        + "You are an efficient workplace assistant. Use tools to complete the task. "
-        "Call only tools that are necessary."
-    )
+    _clear_wb_tool_name_remap()
+    tools = _prepare_tools_for_hosted_api(tools)
+
     llm = _worker_llm().bind_tools(tools, parallel_tool_calls=False)
-    agent = create_react_agent(llm, tools, prompt=base_prompt)
+    agent = create_react_agent(llm, tools, prompt=_sas_system_prompt())
+
     err = ""
     t0 = time.perf_counter()
     try:
@@ -84,38 +186,46 @@ def run_workbench_sas(task: str, tools: list) -> dict[str, Any]:
             "error": err,
             "final_response": "",
         }
+
     latency = time.perf_counter() - t0
     messages = result.get("messages", [])
-    calls = tool_calls_to_strings(messages)
-    tokens = 0
-    for msg in messages:
-        if hasattr(msg, "response_metadata"):
-            usage = (msg.response_metadata or {}).get("token_usage") or {}
-            tokens += usage.get("total_tokens", 0)
-    final = ""
-    for msg in reversed(messages):
-        if hasattr(msg, "content") and msg.content:
-            final = str(msg.content)
-            break
     return {
-        "function_calls": calls,
-        "total_tokens": tokens,
+        "function_calls": tool_calls_to_strings(messages),
+        "total_tokens": _aggregate_tokens(messages),
         "latency_sec": latency,
         "error": err,
-        "final_response": final,
+        "final_response": _final_text(messages),
     }
 
 
-# --- CMAS: supervisor + one ReAct worker per domain (workers filtered by CSV domains) ---
+# ---------------------------------------------------------------------------
+# CMAS: supervisor + one ReAct worker per domain (workers filtered by CSV domains)
+# ---------------------------------------------------------------------------
 
 _WORKER_SPECS: list[tuple[str, str, list[str]]] = [
-    ("email_agent", "You are the Email agent. Use email and directory tools only.", ["email"]),
-    ("calendar_agent", "You are the Calendar agent. Use calendar tools only.", ["calendar"]),
-    ("analytics_agent", "You are the Analytics agent. Use analytics tools only.", ["analytics"]),
-    ("project_management_agent", "You are Project Management. Use project tools only.", ["project_management"]),
+    (
+        "email_agent",
+        "Email / inbox operations. Use email and company-directory tools only. Search first for IDs, then act.",
+        ["email"],
+    ),
+    (
+        "calendar_agent",
+        "Calendar operations. Use calendar and company-directory tools only. Search events first, then modify by exact event_id.",
+        ["calendar"],
+    ),
+    (
+        "analytics_agent",
+        "Analytics / plots / traffic queries. Use analytics tools only. Check values before plotting; only plot when the task's condition holds.",
+        ["analytics"],
+    ),
+    (
+        "project_management_agent",
+        "Project management. Use project tools only. Search tasks first, act on exact task_id.",
+        ["project_management"],
+    ),
     (
         "crm_agent",
-        "You are the CRM agent. Use customer relationship tools only.",
+        "Customer relationship management. Use CRM tools only. Search customers first, modify by exact customer_id.",
         ["customer_relationship_manager"],
     ),
 ]
@@ -132,22 +242,50 @@ def _active_worker_specs(domains: list[str]) -> list[tuple[str, str, list[str]]]
     return active if active else list(_WORKER_SPECS)
 
 
+_ACTION_RE = re.compile(r"^\s*ACTION\s*:\s*(.+?)\s*$", re.IGNORECASE | re.MULTILINE)
+
+
+def _parse_action_line(text: str, candidates: list[str]) -> str | None:
+    """Return the chosen worker name or 'FINISH' from the supervisor text.
+
+    Tolerates fenced/prefixed output from frontier models."""
+    stripped = text.strip().strip("`")
+    m = _ACTION_RE.search(stripped)
+    raw = m.group(1).strip().lower() if m else stripped.lower()
+
+    if "finish" in raw:
+        return "FINISH"
+    for c in candidates:
+        base = c.lower()
+        if base in raw or base.replace("_agent", "") in raw:
+            return c
+    # Last resort: scan entire text.
+    low = stripped.lower()
+    for c in candidates:
+        base = c.lower()
+        if base in low or base.replace("_agent", "") in low:
+            return c
+    if "finish" in low:
+        return "FINISH"
+    return None
+
+
 def build_workbench_cmas_graph(domains: list[str], collected_calls: list[str]):
     """Hub-and-spoke graph; appends each worker's tool calls to collected_calls."""
     from langgraph.prebuilt import create_react_agent
 
     active = _active_worker_specs(domains)
-    prefix = workbench_system_prompt_prefix()
     base_llm = _worker_llm()
+    _clear_wb_tool_name_remap()
 
     worker_reacts: dict[str, Any] = {}
     for node_name, worker_prompt, dlist in active:
-        wt = get_tools_for_domains(dlist)
+        wt = _prepare_tools_for_hosted_api(get_tools_for_domains(dlist))
         llm_w = base_llm.bind_tools(wt, parallel_tool_calls=False)
         worker_reacts[node_name] = create_react_agent(
             llm_w,
             wt,
-            prompt=prefix + worker_prompt,
+            prompt=_worker_system_prompt(worker_prompt),
         )
 
     def _run_worker(node_name: str, task: str, tag: str) -> dict:
@@ -165,19 +303,9 @@ def build_workbench_cmas_graph(domains: list[str], collected_calls: list[str]):
             }
         messages = result.get("messages", [])
         collected_calls.extend(tool_calls_to_strings(messages))
-        tokens = 0
-        for msg in messages:
-            if hasattr(msg, "response_metadata"):
-                usage = (msg.response_metadata or {}).get("token_usage") or {}
-                tokens += usage.get("total_tokens", 0)
-        final = ""
-        for msg in reversed(messages):
-            if hasattr(msg, "content") and msg.content:
-                final = str(msg.content)
-                break
         return {
-            "aggregated_context": [f"[{tag}] {final}"],
-            "total_tokens": tokens,
+            "aggregated_context": [f"[{tag}] {_final_text(messages)}"],
+            "total_tokens": _aggregate_tokens(messages),
         }
 
     descriptions = {
@@ -187,12 +315,6 @@ def build_workbench_cmas_graph(domains: list[str], collected_calls: list[str]):
         "project_management_agent": "Project tasks / boards",
         "crm_agent": "Customer relationship records",
     }
-
-    def _extract_tokens(response) -> int:
-        if hasattr(response, "response_metadata"):
-            u = (response.response_metadata or {}).get("token_usage") or {}
-            return u.get("total_tokens", 0)
-        return 0
 
     def _detect_cycle(history: list[str]) -> str | None:
         if len(history) >= 3 and history[-1] == history[-2] == history[-3]:
@@ -262,66 +384,44 @@ def build_workbench_cmas_graph(domains: list[str], collected_calls: list[str]):
             response = base_llm.invoke(prompt)
             return {
                 "next_action": "FINISH",
-                "final_synthesis": response.content,
-                "total_tokens": _extract_tokens(response),
+                "final_synthesis": _message_content_as_str(response.content),
+                "total_tokens": _tokens_from_message(response),
                 "execution_path": ["FINISH"],
             }
 
+        avail_names = [w[0] for w in avail]
         avail_desc = "\n".join(f"- {w[0]}: {descriptions.get(w[0], w[0])}" for w in avail)
         dispatch_prompt = (
             "You are a supervisor coordinating specialized workers.\n\n"
-            f"Task: {task}\n\nData so far:\n{context if context else 'Nothing yet.'}\n\n"
+            f"Task: {task}\n\nData collected so far:\n{context if context else 'Nothing yet.'}\n\n"
             f"Available workers:\n{avail_desc}\n\n"
-            "If you have enough data to answer fully, respond:\n"
-            "REASONING: ...\nACTION: FINISH\n"
-            "Otherwise dispatch exactly one worker:\n"
-            "REASONING: ...\nACTION: <worker_name>\n"
-            "worker_name must be one of the available worker names listed above."
+            "Dispatch exactly one worker, or finish. Respond on two lines with no markdown fences:\n"
+            "REASONING: <one-sentence rationale>\n"
+            "ACTION: <one of: "
+            + ", ".join(avail_names + ["FINISH"])
+            + ">"
         )
         response = base_llm.invoke(dispatch_prompt)
-        tokens = _extract_tokens(response)
-        text = _message_content_as_str(response.content).strip()
-        action_str = ""
-        for line in text.split("\n"):
-            stripped = line.strip()
-            if stripped.upper().startswith("ACTION:"):
-                action_str = stripped[7:].strip().lower()
-        if not action_str:
-            action_str = text.lower()
+        tokens = _tokens_from_message(response)
+        text = _message_content_as_str(response.content)
 
-        chosen = None
-        for w in avail:
-            key = w[0].lower()
-            if key in action_str or key.replace("_agent", "") in action_str:
-                chosen = w[0]
-                break
+        chosen = _parse_action_line(text, avail_names)
 
-        if chosen is None and "finish" in action_str:
+        if chosen == "FINISH" or chosen is None:
             synth = base_llm.invoke(
                 f"Task: {task}\n\nAggregated Data:\n{context}\n\nSynthesize a clear final answer."
             )
             return {
                 "next_action": "FINISH",
-                "final_synthesis": synth.content,
-                "total_tokens": tokens + _extract_tokens(synth),
+                "final_synthesis": _message_content_as_str(synth.content),
+                "total_tokens": tokens + _tokens_from_message(synth),
                 "execution_path": ["FINISH"],
             }
 
-        if chosen:
-            return {
-                "next_action": chosen,
-                "total_tokens": tokens,
-                "execution_path": [chosen],
-            }
-
-        synth = base_llm.invoke(
-            f"Task: {task}\n\nAggregated Data:\n{context}\n\nSynthesize a clear final answer."
-        )
         return {
-            "next_action": "FINISH",
-            "final_synthesis": synth.content,
-            "total_tokens": tokens + _extract_tokens(synth),
-            "execution_path": ["FINISH"],
+            "next_action": chosen,
+            "total_tokens": tokens,
+            "execution_path": [chosen],
         }
 
     def supervisor_router(state: CentralizedState):
