@@ -27,9 +27,9 @@ build/
 # PCAB benchmark database (generated)
 pcab_environment.db
 
-# Benchmark sweep output (generated)
-benchmark_results.json
-benchmark_workbench_results.json
 
 # WorkBench upstream clone (run scripts/setup_workbench.py)
 vendor/WorkBench/
+
+# Timestamped regret / oracle exports from evaluate_regret.py
+results/
