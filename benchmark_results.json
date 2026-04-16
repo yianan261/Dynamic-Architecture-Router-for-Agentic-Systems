@@ -1,0 +1,178 @@
+{
+  "metadata": {
+    "sweep_timestamp": "2026-03-24T00:12:49Z",
+    "phase": "llm",
+    "note": "total_tokens from LLM response_metadata when USE_LLM_WORKERS=true, mock formula otherwise."
+  },
+  "tasks": [
+    {
+      "task_id": "PCAB-Seq-01",
+      "description": "Find my advisor's next available slot, check conflicts, plan commute.",
+      "category": "sequential",
+      "router_prediction": null,
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 1.0,
+          "latency_sec": 5.4521,
+          "total_tokens": 3865,
+          "error_type": null,
+          "execution_path": [
+            "contact_tool",
+            "calendar_tool",
+            "drive_tool",
+            "commute_tool",
+            "contact_tool"
+          ]
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.67,
+          "latency_sec": 13.551,
+          "total_tokens": 4100,
+          "error_type": null,
+          "execution_path": [
+            "calendar_agent|The data collected so far is insufficient to fully answer the task because it lacks information about the advisor's schedule, commute preferences, and contact details.",
+            "contacts_agent|The data collected so far only fetches calendar events for July 27, 2024, but it does not provide information about the advisor's next available slot, conflicts, or commute planning.",
+            "drive_agent|The data collected so far is insufficient to fully answer the task because it lacks information about the advisor's calendar events and contact details, and also does not provide any commute-related data.",
+            "FINISH|The data collected so far is insufficient to fully answer the task because it lacks information about the advisor's schedule and calendar events, which are crucial for finding the next available slot and checking conflicts."
+          ]
+        }
+      ]
+    },
+    {
+      "task_id": "PCAB-Seq-02",
+      "description": "I need to meet with Dr. Hong Man on March 16th after my Deep Learning lecture. Where should I go, and how long will it take to walk there?",
+      "category": "sequential",
+      "router_prediction": null,
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.67,
+          "latency_sec": 1.5761,
+          "total_tokens": 1757,
+          "error_type": null,
+          "execution_path": [
+            "commute_tool",
+            "calendar_tool"
+          ]
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 1.0,
+          "latency_sec": 16.0707,
+          "total_tokens": 5617,
+          "error_type": null,
+          "execution_path": [
+            "contacts_agent|The data collected so far is insufficient to fully answer the task because it lacks information about Dr. Hong Man's contact details, meeting location, and the lecture schedule.",
+            "calendar_agent|The data collected so far is insufficient because it only contains a generic response indicating the need for more steps to process the request, without providing any relevant information about the task.",
+            "drive_agent|The data collected so far is insufficient because it only provides information about the calendar event on March 16th, but it does not provide the location of the Deep Learning lecture or Dr. Hong Man's location.",
+            "commute_agent|The data collected so far is insufficient to fully answer the task because it does not provide any information about Dr. Hong Man's location or the location of the Deep Learning lecture, which are necessary to determine where to meet and how long it will take to walk there.",
+            "FINISH"
+          ]
+        }
+      ]
+    },
+    {
+      "task_id": "PCAB-Par-01",
+      "description": "Cross-reference my calendar availability with maps for upstate NY hiking and check my drive notes.",
+      "category": "parallel",
+      "router_prediction": null,
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.67,
+          "latency_sec": 2.3718,
+          "total_tokens": 2386,
+          "error_type": null,
+          "execution_path": [
+            "calendar_tool",
+            "drive_tool",
+            "drive_tool"
+          ]
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 1.0,
+          "latency_sec": 24.3238,
+          "total_tokens": 7247,
+          "error_type": null,
+          "execution_path": [
+            "calendar_agent|The data collected so far is insufficient to fully answer the task because it lacks information about calendar availability, maps for upstate NY hiking, and drive notes.",
+            "drive_agent|The data collected so far provides information on how to access the required data, but it does not contain the actual calendar availability, drive notes, or maps for upstate NY hiking.",
+            "commute_agent|The data collected so far is insufficient to fully answer the task because it only provides information on how to use specific functions, but does not provide the actual results of these functions, such as calendar events and drive notes.",
+            "contacts_agent|The data collected so far is insufficient to fully answer the task because it only provides information about the functions that can be used to check calendar availability and drive notes, but does not provide the actual results of these functions or any information about the commute between the user's location and the hiking location.",
+            "FINISH"
+          ]
+        }
+      ]
+    },
+    {
+      "task_id": "PCAB-Par-14",
+      "description": "Please aggregate my Calendar and Maps data simultaneously.",
+      "category": "parallel",
+      "router_prediction": null,
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 1.0,
+          "latency_sec": 2.3158,
+          "total_tokens": 1718,
+          "error_type": null,
+          "execution_path": [
+            "calendar_tool",
+            "commute_tool"
+          ]
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 1.0,
+          "latency_sec": 15.5131,
+          "total_tokens": 5698,
+          "error_type": null,
+          "execution_path": [
+            "calendar_agent|The data collected so far is insufficient to fully answer the task because it doesn't include any calendar or maps data, which are essential for the task.",
+            "drive_agent|The data collected so far only includes information about the calendar tool's functionality and does not provide any actual calendar or maps data, making it insufficient to fully answer the task.",
+            "commute_agent|The data collected so far is insufficient to fully answer the task as it only includes information about calendar events and a drive query, but it does not provide any data related to Maps.",
+            "contacts_agent|The data collected so far is insufficient to fully answer the task because it only includes information about the Calendar, Maps, and Commute functions, but it does not provide any actual calendar data or map data, which are crucial for aggregation.",
+            "FINISH"
+          ]
+        }
+      ]
+    },
+    {
+      "task_id": "PCAB-Exploratory-03",
+      "description": "Cross-reference 3 different data sources to find schedule anomalies.",
+      "category": "exploratory",
+      "router_prediction": null,
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.67,
+          "latency_sec": 2.7082,
+          "total_tokens": 2367,
+          "error_type": null,
+          "execution_path": [
+            "calendar_tool",
+            "drive_tool",
+            "contact_tool"
+          ]
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 1.0,
+          "latency_sec": 19.782,
+          "total_tokens": 6747,
+          "error_type": null,
+          "execution_path": [
+            "calendar_agent|The data collected so far is insufficient to fully answer the task because it doesn't contain any information about schedules, anomalies, or cross-referenced data from multiple sources.",
+            "drive_agent|The data collected so far is insufficient to fully answer the task because it only contains a generic response indicating no events found, without any actual data or schedule information from the three different sources.",
+            "contacts_agent|The data collected so far is insufficient to fully answer the task because it only contains information about the absence of events in the calendar and the lack of results from a query in Drive, but it does not provide any information about the actual schedule or anomalies.",
+            "commute_agent|The data collected so far is insufficient to fully answer the task because it only contains error messages from three different data sources, indicating that there are no events found, no results returned, and a request that needs more steps to process. None of these messages provide any actual schedule information or anomalies.",
+            "FINISH"
+          ]
+        }
+      ]
+    }
+  ]
+}

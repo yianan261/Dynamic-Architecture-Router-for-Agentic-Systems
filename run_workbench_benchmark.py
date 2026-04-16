@@ -42,6 +42,7 @@ from dynamic_routing.dotenv_util import load_project_root_dotenv  # noqa: E402
 
 load_project_root_dotenv()
 
+from dynamic_routing.chat_models import llm_backend, router_llm_backend  # noqa: E402
 from dynamic_routing.workbench_env import (  # noqa: E402
     get_tools_for_domains,
     parse_domains_cell,
@@ -49,6 +50,40 @@ from dynamic_routing.workbench_env import (  # noqa: E402
 )
 from dynamic_routing.workbench_grade import workbench_accuracy_score  # noqa: E402
 from dynamic_routing.workbench_runner import run_workbench_cmas, run_workbench_sas  # noqa: E402
+
+
+def _resolve_run_identity() -> dict[str, str]:
+    """Return {phase, worker_backend, worker_model, router_backend, router_model}.
+
+    ``phase`` becomes ``workbench_<backend>_<model>`` so downstream analysis and
+    JSON metadata reflect the actual run — previously this string was hard-coded
+    to ``workbench_llama_vllm`` regardless of LLM_BACKEND.
+    """
+    backend = llm_backend()
+    if backend == "openai":
+        worker_model = os.environ.get("OPENAI_WORKER_MODEL", "gpt-5.4-mini")
+    elif backend == "google":
+        worker_model = os.environ.get("GOOGLE_WORKER_MODEL", "gemini-3.1-flash-lite-preview")
+    else:
+        worker_model = os.environ.get("VLLM_WORKER_MODEL", "meta-llama/Llama-3.1-8B-Instruct")
+    r_backend = router_llm_backend()
+    if r_backend == "openai":
+        router_model = os.environ.get("OPENAI_ROUTER_MODEL") or os.environ.get(
+            "OPENAI_WORKER_MODEL", "gpt-5.4-mini"
+        )
+    elif r_backend == "google":
+        router_model = os.environ.get("GOOGLE_ROUTER_MODEL") or os.environ.get(
+            "GOOGLE_WORKER_MODEL", "gemini-3.1-flash-lite-preview"
+        )
+    else:
+        router_model = os.environ.get("VLLM_MODEL", "mistralai/Mistral-7B-Instruct-v0.2")
+    return {
+        "phase": f"workbench_{backend}_{worker_model.replace('/', '_')}",
+        "worker_backend": backend,
+        "worker_model": worker_model,
+        "router_backend": r_backend,
+        "router_model": router_model,
+    }
 
 
 DEFAULT_CSV = project_root / "benchmarks" / "workbench_50_queries.csv"
@@ -206,7 +241,7 @@ def main() -> None:
         rows = rows[: args.limit]
 
     task_results: list[dict] = []
-    phase = "workbench_llama_vllm"
+    run_identity = _resolve_run_identity()
 
     for i, row in enumerate(rows):
         q = row["query"]
@@ -300,7 +335,11 @@ def main() -> None:
     payload = {
         "metadata": {
             "sweep_timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            "phase": phase,
+            "phase": run_identity["phase"],
+            "worker_backend": run_identity["worker_backend"],
+            "worker_model": run_identity["worker_model"],
+            "router_backend": run_identity["router_backend"],
+            "router_model": run_identity["router_model"],
             "csv": str(csv_path.resolve()),
             "note": (
                 "accuracy_score: WorkBench outcome match (DB state after predicted calls vs gold). "

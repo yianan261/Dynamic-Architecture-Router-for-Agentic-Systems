@@ -1,0 +1,2420 @@
+{
+  "metadata": {
+    "sweep_timestamp": "2026-04-02T19:02:04Z",
+    "phase": "workbench_llama_vllm",
+    "csv": "/scratch2/ychen17/DynamicRoutingAgents/benchmarks/workbench_50_queries.csv",
+    "note": "accuracy_score: WorkBench outcome match (DB state after predicted calls vs gold). execution_path: WorkBench-style .func(...) strings. Tokens from LLM usage when available."
+  },
+  "tasks": [
+    {
+      "task_id": "WB-000",
+      "description": "nadia just sent me an email that I need to delete. Can you get rid of of the most recent email they sent me?",
+      "category": "workbench",
+      "domains": [
+        "email"
+      ],
+      "gold_answer": [
+        "email.delete_email.func(email_id=\"00000479\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 4.8064,
+          "total_tokens": 18279,
+          "error_type": null,
+          "execution_path": [
+            "email.get_email_information_by_id.func(email_id=\"email.get_most_recent_email_id()\", field=\"email_id\")",
+            "email.get_email_information_by_id.func(email_id=\"email.get_most_recent_email_id()\", field=\"email_id\")",
+            "email.get_email_information_by_id.func(email_id=\"email.get_most_recent_email_id()\", field=\"email_id\")",
+            "email.delete_email.func(email_id=\"email.get_most_recent_email_id()\")",
+            "email.delete_email.func(email_id=\"email.get_most_recent_email_id()\")",
+            "email.delete_email.func(email_id=\"email.get_most_recent_email_id()\")",
+            "email.delete_email.func(email_id=\"email.get_most_recent_email_id()\")",
+            "email.delete_email.func(email_id=\"email.get_most_recent_email_id()\")",
+            "email.delete_email.func(email_id=\"email.get_most_recent_email_id()\")",
+            "email.delete_email.func(email_id=\"email.get_most_recent_email_id()\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 6.461,
+          "total_tokens": 12840,
+          "error_type": null,
+          "execution_path": [
+            "email.get_email_information_by_id.func(email_id=\"email.get_most_recent_email_id_by_sender\", field=\"email_id\")",
+            "email.get_email_information_by_id.func(email_id=\"email.get_most_recent_email_id_by_sender\", field=\"email_id\")",
+            "email.get_email_information_by_id.func(email_id=\"email.get_most_recent_email_id_by_sender\", field=\"email_id\")",
+            "email.delete_email.func(email_id=\"email.get_most_recent_email_id_by_sender\")",
+            "email.get_email_information_by_id.func(email_id=\"email.get_most_recent_email_id_by_sender\", field=\"email_id\")",
+            "email.delete_email.func(email_id=\"email.get_most_recent_email_id_by_sender\")",
+            "email.get_email_information_by_id.func(email_id=\"email.get_most_recent_email_id_by_sender\", field=\"email_id\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-001",
+      "description": "All my emails from santiago from the last 3 days need to be deleted. Can you do that?",
+      "category": "workbench",
+      "domains": [
+        "email"
+      ],
+      "gold_answer": [
+        "email.delete_email.func(email_id=\"00000348\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 1.0,
+          "latency_sec": 1.8962,
+          "total_tokens": 7099,
+          "error_type": null,
+          "execution_path": [
+            "email.search_emails.func(date_max=\"2023-11-30\", date_min=\"2023-11-27\", query=\"santiago\")",
+            "email.delete_email.func(email_id=\"00000348\")",
+            "email.search_emails.func(date_max=\"2023-11-30\", date_min=\"2023-11-27\", query=\"santiago\")"
+          ],
+          "grading": {
+            "outcome_match": true,
+            "exact_side_effect_match": true
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 1.0,
+          "latency_sec": 2.9144,
+          "total_tokens": 7386,
+          "error_type": null,
+          "execution_path": [
+            "email.search_emails.func(date_max=\"2023-11-30\", date_min=\"2023-11-27\", query=\"santiago\")",
+            "email.delete_email.func(email_id=\"00000348\")",
+            "email.search_emails.func(date_max=\"2023-11-30\", date_min=\"2023-11-27\", query=\"santiago\")"
+          ],
+          "grading": {
+            "outcome_match": true,
+            "exact_side_effect_match": true
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-002",
+      "description": "I need to get rid of all my emails from nia from the last 4 days. Can you do delete them?",
+      "category": "workbench",
+      "domains": [
+        "email"
+      ],
+      "gold_answer": [
+        "email.delete_email.func(email_id=\"00000066\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 1.1796,
+          "total_tokens": 4992,
+          "error_type": null,
+          "execution_path": [
+            "email.search_emails.func(date_max=\"2023-11-26\", query=\"from: nia\")",
+            "email.delete_email.func(email_id=\"email_id\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 1.0,
+          "latency_sec": 3.1228,
+          "total_tokens": 7412,
+          "error_type": null,
+          "execution_path": [
+            "email.search_emails.func(date_max=\"2023-11-30\", date_min=\"2023-11-26\", query=\"nia\")",
+            "email.delete_email.func(email_id=\"00000066\")",
+            "email.search_emails.func(date_max=\"2023-11-30\", date_min=\"2023-11-26\", query=\"nia\")"
+          ],
+          "grading": {
+            "outcome_match": true,
+            "exact_side_effect_match": true
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-003",
+      "description": "I need to get rid of all my emails from nadia from the last 4 days. Can you do delete them?",
+      "category": "workbench",
+      "domains": [
+        "email"
+      ],
+      "gold_answer": [
+        "email.delete_email.func(email_id=\"00000070\")",
+        "email.delete_email.func(email_id=\"00000479\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 3.0324,
+          "total_tokens": 8677,
+          "error_type": null,
+          "execution_path": [
+            "email.search_emails.func(date_max=\"2023-11-26\", date_min=\"2023-11-22\", query=\"from:nadia\")",
+            "email.delete_email.func(email_id=\"email_id\")",
+            "email.search_emails.func(date_max=\"2023-11-26\", date_min=\"2023-11-22\", query=\"from:nadia\")",
+            "email.delete_email.func(email_id=\"email_id\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 6.3086,
+          "total_tokens": 9139,
+          "error_type": null,
+          "execution_path": [
+            "email.search_emails.func(date_max=\"2023-11-26\", date_min=\"2023-11-22\", query=\"from:nadia\")",
+            "email.delete_email.func(email_id=\"email_id\")",
+            "email.search_emails.func(date_max=\"2023-11-26\", date_min=\"2023-11-22\", query=\"from:nadia\")",
+            "email.delete_email.func(email_id=\"email_id\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-004",
+      "description": "I need to send an email to dmitri saying 'Hey dmitri,\\n\\nI have some ideas for the process review that I'd like to run by you. When are you free?\\n\\nThanks,\\n\\nSam' and title it 'Update on Product Launch Analysis'. Can you do that?",
+      "category": "workbench",
+      "domains": [
+        "email"
+      ],
+      "gold_answer": [
+        "email.send_email.func(recipient=\"dmitri.ivanov@atlas.com\", subject=\"Update on Product Launch Analysis\", body=\"Hey dmitri,\\n\\nI have some ideas for the process review that I'd like to run by you. When are you free?\\n\\nThanks,\\n\\nSam\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 1.2631,
+          "total_tokens": 3447,
+          "error_type": null,
+          "execution_path": [
+            "email.send_email.func(body=\"Hey dmitri,\n\nI have some ideas for the process review that I\u2019d like to run by you. When are you free?\n\nThanks,\n\nSam\", recipient=\"dmitri@example.com\", subject=\"Update on Product Launch Analysis\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 1.4832,
+          "total_tokens": 415,
+          "error_type": null,
+          "execution_path": [],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-005",
+      "description": "Reply to yuki's last email about 'Update on Corporate Social Responsibility Initiative' with 'Thanks for the update - I will get back to you tomorrow.'",
+      "category": "workbench",
+      "domains": [
+        "email"
+      ],
+      "gold_answer": [
+        "email.reply_email.func(email_id=\"00000446\", body=\"Thanks for the update - I will get back to you tomorrow.\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 1.0,
+          "latency_sec": 2.1607,
+          "total_tokens": 9287,
+          "error_type": null,
+          "execution_path": [
+            "email.reply_email.func(body=\"Thanks for the update - I will get back to you tomorrow.\", email_id=\"get last email id of yuki\")",
+            "email.get_email_information_by_id.func(email_id=\"get last email id of yuki\", field=\"email_id\")",
+            "email.search_emails.func(query=\"Update on Corporate Social Responsibility Initiative\")",
+            "email.reply_email.func(body=\"Thanks for the update - I will get back to you tomorrow.\", email_id=\"00000447\")"
+          ],
+          "grading": {
+            "outcome_match": true,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 6.0692,
+          "total_tokens": 13144,
+          "error_type": null,
+          "execution_path": [
+            "email.reply_email.func(body=\"Thanks for the update - I will get back to you tomorrow.\", email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"yuki\")",
+            "email.reply_email.func(body=\"Thanks for the update - I will get back to you tomorrow.\", email_id=\"email.get_email_information_by_id\", field=\"email_id\")",
+            "email.reply_email.func(body=\"Thanks for the update - I will get back to you tomorrow.\", email_id=\"email.get_email_information_by_id\", field=\"email_id\")",
+            "email.reply_email.func(body=\"Thanks for the update - I will get back to you tomorrow.\", email_id=\"email.get_email_information_by_id\", field=\"email_id\")",
+            "email.reply_email.func(body=\"Thanks for the update - I will get back to you tomorrow.\", email_id=\"email.get_email_information_by_id\", field=\"email_id\")",
+            "email.reply_email.func(body=\"Thanks for the update - I will get back to you tomorrow.\", email_id=\"email.get_email_information_by_id\", field=\"email_id\")",
+            "email.reply_email.func(body=\"Thanks for the update - I will get back to you tomorrow.\", email_id=\"email.get_email_information_by_id\", field=\"email_id\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-006",
+      "description": "Reply to nia's last email about 'Task Update on Design logo for website' with 'Thanks for the update - I will get back to you tomorrow.'",
+      "category": "workbench",
+      "domains": [
+        "email"
+      ],
+      "gold_answer": [
+        "email.reply_email.func(email_id=\"00000403\", body=\"Thanks for the update - I will get back to you tomorrow.\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 1.0,
+          "latency_sec": 1.9969,
+          "total_tokens": 8139,
+          "error_type": null,
+          "execution_path": [
+            "email.reply_email.func(body=\"Thanks for the update - I will get back to you tomorrow.\", email_id=\"get last email id of nia\")",
+            "email.search_emails.func(date_max=\"2023-11-30\", date_min=\"2023-11-01\", query=\"Task Update on Design logo for website\")",
+            "email.reply_email.func(body=\"Thanks for the update - I will get back to you tomorrow.\", email_id=\"00000403\")"
+          ],
+          "grading": {
+            "outcome_match": true,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 6.3449,
+          "total_tokens": 13041,
+          "error_type": null,
+          "execution_path": [
+            "email.reply_email.func(body=\"Thanks for the update - I will get back to you tomorrow.\", email_id=\"get last email id of nia\")",
+            "email.reply_email.func(body=\"Thanks for the update - I will get back to you tomorrow.\", email_id=\"get last email id of nia\")",
+            "email.reply_email.func(body=\"Thanks for the update - I will get back to you tomorrow.\", email_id=\"get last email id of nia\")",
+            "email.reply_email.func(body=\"Thanks for the update - I will get back to you tomorrow.\", email_id=\"get last email id of nia\")",
+            "email.reply_email.func(body=\"Thanks for the update - I will get back to you tomorrow.\", email_id=\"get last email id of nia\")",
+            "email.reply_email.func(body=\"Thanks for the update - I will get back to you tomorrow.\", email_id=\"get last email id of nia\")",
+            "email.reply_email.func(body=\"Thanks for the update - I will get back to you tomorrow.\", email_id=\"get last email id of nia\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-007",
+      "description": "can you forward my most recent email from olga to raj",
+      "category": "workbench",
+      "domains": [
+        "email"
+      ],
+      "gold_answer": [
+        "email.forward_email.func(email_id=\"00000206\", recipient=\"raj.patel@atlas.com\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 7.3575,
+          "total_tokens": 19126,
+          "error_type": null,
+          "execution_path": [
+            "email.forward_email.func(email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"Raj\", recipient=\"company_directory.find_email_address\")",
+            "email.forward_email.func(email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"Raj\", recipient=\"company_directory.find_email_address\")",
+            "email.forward_email.func(email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"Raj\", recipient=\"company_directory.find_email_address\")",
+            "email.forward_email.func(email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"Raj\", recipient=\"company_directory.find_email_address\")",
+            "email.forward_email.func(email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"Raj\", recipient=\"company_directory.find_email_address\")",
+            "email.forward_email.func(email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"Raj\", recipient=\"company_directory.find_email_address\")",
+            "email.forward_email.func(email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"Raj\", recipient=\"company_directory.find_email_address\")",
+            "email.forward_email.func(email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"Raj\", recipient=\"company_directory.find_email_address\")",
+            "email.forward_email.func(email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"Raj\", recipient=\"company_directory.find_email_address\")",
+            "email.forward_email.func(email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"Raj\", recipient=\"company_directory.find_email_address\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 7.7593,
+          "total_tokens": 13076,
+          "error_type": null,
+          "execution_path": [
+            "email.forward_email.func(email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"Raj\", recipient=\"company_directory.find_email_address\")",
+            "email.forward_email.func(email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"Raj\", recipient=\"company_directory.find_email_address\")",
+            "email.forward_email.func(email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"Raj\", recipient=\"company_directory.find_email_address\")",
+            "email.forward_email.func(email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"Raj\", recipient=\"company_directory.find_email_address\")",
+            "email.forward_email.func(email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"Raj\", recipient=\"company_directory.find_email_address\")",
+            "email.forward_email.func(email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"Raj\", recipient=\"company_directory.find_email_address\")",
+            "email.forward_email.func(email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"Raj\", recipient=\"company_directory.find_email_address\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-008",
+      "description": "can you reply to the latest email from carlos with 'Got it, thank you!'",
+      "category": "workbench",
+      "domains": [
+        "email"
+      ],
+      "gold_answer": [
+        "email.reply_email.func(email_id=\"00000068\", body=\"Got it, thank you!\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 6.4983,
+          "total_tokens": 18856,
+          "error_type": null,
+          "execution_path": [
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 7.4945,
+          "total_tokens": 13399,
+          "error_type": null,
+          "execution_path": [
+            "email.reply_email.func(body=\"Got it, thank you!\", date_max=\"2023-11-30\", date_min=\"2023-11-01\", email_id=\"email.search_emails\", query=\"carlos\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", date_max=\"2023-11-30\", date_min=\"2023-11-01\", email_id=\"email.search_emails\", query=\"carlos\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", date_max=\"2023-11-30\", date_min=\"2023-11-01\", email_id=\"email.search_emails\", query=\"carlos\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", date_max=\"2023-11-30\", date_min=\"2023-11-01\", email_id=\"email.search_emails\", query=\"carlos\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", date_max=\"2023-11-30\", date_min=\"2023-11-01\", email_id=\"email.search_emails\", query=\"carlos\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", date_max=\"2023-11-30\", date_min=\"2023-11-01\", email_id=\"email.search_emails\", query=\"carlos\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", date_max=\"2023-11-30\", date_min=\"2023-11-01\", email_id=\"email.search_emails\", query=\"carlos\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-009",
+      "description": "I need to reply to the latest email from amir with 'Got it, thank you!'. Can you do that?",
+      "category": "workbench",
+      "domains": [
+        "email"
+      ],
+      "gold_answer": [
+        "email.reply_email.func(email_id=\"00000188\", body=\"Got it, thank you!\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 7.3465,
+          "total_tokens": 19256,
+          "error_type": null,
+          "execution_path": [
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"amir\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"amir\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"amir\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"amir\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"amir\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"amir\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"amir\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"amir\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"amir\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"amir\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 5.8136,
+          "total_tokens": 13028,
+          "error_type": null,
+          "execution_path": [
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"amir\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"amir\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"amir\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"amir\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"amir\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"amir\")",
+            "email.reply_email.func(body=\"Got it, thank you!\", email_id=\"email.get_email_information_by_id\", field=\"email_id\", name=\"amir\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-010",
+      "description": "can you cancel my first meeting on December 8",
+      "category": "workbench",
+      "domains": [
+        "calendar"
+      ],
+      "gold_answer": [
+        "calendar.delete_event.func(event_id=\"00000236\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 5.1243,
+          "total_tokens": 10836,
+          "error_type": null,
+          "execution_path": [
+            "calendar.delete_event.func(event_id=\"calendar.search_events\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-08 18:00:00\", time_min=\"2023-12-08 09:00:00\")",
+            "calendar.delete_event.func(event_id=\"calendar.get_event_information_by_id\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-08 18:00:00\", time_min=\"2023-12-08 09:00:00\")",
+            "calendar.delete_event.func(event_id=\"calendar.search_events\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-08 18:00:00\", time_min=\"2023-12-08 09:00:00\")",
+            "calendar.delete_event.func(event_id=\"calendar.get_event_information_by_id\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-08 18:00:00\", time_min=\"2023-12-08 09:00:00\")",
+            "calendar.delete_event.func(event_id=\"calendar.search_events\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-08 18:00:00\", time_min=\"2023-12-08 09:00:00\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 7.1439,
+          "total_tokens": 11222,
+          "error_type": null,
+          "execution_path": [
+            "calendar.delete_event.func(event_id=\"calendar.search_events\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-08 18:00:00\", time_min=\"2023-12-08 09:00:00\")",
+            "calendar.delete_event.func(event_id=\"calendar.get_event_information_by_id\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-08 18:00:00\", time_min=\"2023-12-08 09:00:00\")",
+            "calendar.delete_event.func(event_id=\"calendar.search_events\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-08 18:00:00\", time_min=\"2023-12-08 09:00:00\")",
+            "calendar.delete_event.func(event_id=\"calendar.get_event_information_by_id\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-08 18:00:00\", time_min=\"2023-12-08 09:00:00\")",
+            "calendar.delete_event.func(event_id=\"calendar.search_events\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-08 18:00:00\", time_min=\"2023-12-08 09:00:00\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-011",
+      "description": "can you cancel my first meeting on December 6",
+      "category": "workbench",
+      "domains": [
+        "calendar"
+      ],
+      "gold_answer": [
+        "calendar.delete_event.func(event_id=\"00000045\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 5.0948,
+          "total_tokens": 10835,
+          "error_type": null,
+          "execution_path": [
+            "calendar.delete_event.func(event_id=\"calendar.search_events\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-06 18:00:00\", time_min=\"2023-12-06 09:00:00\")",
+            "calendar.delete_event.func(event_id=\"calendar.get_event_information_by_id\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-06 18:00:00\", time_min=\"2023-12-06 09:00:00\")",
+            "calendar.delete_event.func(event_id=\"calendar.search_events\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-06 18:00:00\", time_min=\"2023-12-06 09:00:00\")",
+            "calendar.delete_event.func(event_id=\"calendar.get_event_information_by_id\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-06 18:00:00\", time_min=\"2023-12-06 09:00:00\")",
+            "calendar.delete_event.func(event_id=\"calendar.search_events\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-06 18:00:00\", time_min=\"2023-12-06 09:00:00\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 6.6418,
+          "total_tokens": 11102,
+          "error_type": null,
+          "execution_path": [
+            "calendar.delete_event.func(event_id=\"calendar.search_events\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-06 18:00:00\", time_min=\"2023-12-06 09:00:00\")",
+            "calendar.delete_event.func(event_id=\"calendar.get_event_information_by_id\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-06 18:00:00\", time_min=\"2023-12-06 09:00:00\")",
+            "calendar.delete_event.func(event_id=\"calendar.search_events\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-06 18:00:00\", time_min=\"2023-12-06 09:00:00\")",
+            "calendar.delete_event.func(event_id=\"calendar.get_event_information_by_id\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-06 18:00:00\", time_min=\"2023-12-06 09:00:00\")",
+            "calendar.delete_event.func(event_id=\"calendar.search_events\", field=\"event_id\", query=\"meeting\", time_max=\"2023-12-06 18:00:00\", time_min=\"2023-12-06 09:00:00\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-012",
+      "description": "Can you change the name of the last event on November 30 to brainstorming session",
+      "category": "workbench",
+      "domains": [
+        "calendar"
+      ],
+      "gold_answer": [
+        "calendar.update_event.func(event_id=\"00000253\", field=\"event_name\", new_value=\"brainstorming session\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 12.6479,
+          "total_tokens": 20600,
+          "error_type": null,
+          "execution_path": [
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_id\", new_value=\"brainstorming session\", query=\"brainstorming session\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_id\", new_value=\"brainstorming session\", query=\"brainstorming session\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_id\", new_value=\"brainstorming session\", query=\"brainstorming session\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_id\", new_value=\"brainstorming session\", query=\"brainstorming session\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_id\", new_value=\"brainstorming session\", query=\"brainstorming session\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_id\", new_value=\"brainstorming session\", query=\"brainstorming session\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_id\", new_value=\"brainstorming session\", query=\"brainstorming session\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_id\", new_value=\"brainstorming session\", query=\"brainstorming session\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_id\", new_value=\"brainstorming session\", query=\"brainstorming session\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_id\", new_value=\"brainstorming session\", query=\"brainstorming session\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 09:00:00\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 10.9141,
+          "total_tokens": 13588,
+          "error_type": null,
+          "execution_path": [
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_id\", new_value=\"brainstorming session\", query=\"\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_id\", new_value=\"brainstorming session\", query=\"\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_id\", new_value=\"brainstorming session\", query=\"\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_id\", new_value=\"brainstorming session\", query=\"\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_id\", new_value=\"brainstorming session\", query=\"\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_id\", new_value=\"brainstorming session\", query=\"\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_id\", new_value=\"brainstorming session\", query=\"\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 09:00:00\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-013",
+      "description": "please move my first meeting with amir on December 20 by 30 minutes",
+      "category": "workbench",
+      "domains": [
+        "calendar"
+      ],
+      "gold_answer": [
+        "calendar.update_event.func(event_id=\"00000077\", field=\"event_start\", new_value=\"2023-12-20 10:30:00\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 7.8011,
+          "total_tokens": 15627,
+          "error_type": null,
+          "execution_path": [
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_start\", new_value=\"calendar.get_event_information_by_id\", query=\"Amir\", time_max=\"2023-12-20 18:00:00\", time_min=\"2023-12-20 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.create_event\", field=\"event_start\", new_value=\"2023-12-20 09:30:00\", query=\"Meeting with Amir\", time_max=\"2023-12-20 18:00:00\", time_min=\"2023-12-20 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_start\", new_value=\"2023-12-20 09:30:00\", query=\"Amir\", time_max=\"2023-12-20 18:00:00\", time_min=\"2023-12-20 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.create_event\", field=\"event_start\", new_value=\"2023-12-20 09:30:00\", query=\"Meeting with Amir\", time_max=\"2023-12-20 18:00:00\", time_min=\"2023-12-20 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_start\", new_value=\"2023-12-20 09:30:00\", query=\"Amir\", time_max=\"2023-12-20 18:00:00\", time_min=\"2023-12-20 09:00:00\")",
+            "calendar.create_event.func(duration=\"60\", event_name=\"Meeting with Amir\", event_start=\"2023-12-20 09:30:00\", name=\"Amir\", participant_email=\"company_directory.find_email_address\")",
+            "calendar.update_event.func(event_id=\"00000300\", field=\"event_start\", new_value=\"2023-12-20 09:30:00\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 4.9903,
+          "total_tokens": 10693,
+          "error_type": null,
+          "execution_path": [
+            "calendar.update_event.func(event_id=\"calendar.get_event_information_by_id\", field=\"event_start\", new_value=\"2023-12-20 09:30:00\")",
+            "calendar.create_event.func(duration=\"60\", event_name=\"Meeting with Amir\", event_start=\"2023-12-20 09:30:00\", participant_email=\"amir@example.com\")",
+            "calendar.update_event.func(event_id=\"00000300\", field=\"event_start\", new_value=\"2023-12-20 09:30:00\")",
+            "calendar.get_event_information_by_id.func(event_id=\"00000300\", field=\"event_start\")",
+            "calendar.update_event.func(event_id=\"00000300\", field=\"event_start\", new_value=\"2023-12-20 09:00:00\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-014",
+      "description": "Push back my first meeting with dmitri on December 18 by 1 hours",
+      "category": "workbench",
+      "domains": [
+        "calendar"
+      ],
+      "gold_answer": [
+        "calendar.update_event.func(event_id=\"00000047\", field=\"event_start\", new_value=\"2023-12-18 14:30:00\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 7.659,
+          "total_tokens": 11331,
+          "error_type": null,
+          "execution_path": [
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_start\", new_value=\"calendar.get_event_information_by_id\", query=\"dmitri\", time_max=\"2023-12-18 18:00:00\", time_min=\"2023-12-18 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.create_event\", field=\"event_start\", new_value=\"2023-12-18 10:00:00\", query=\"Meeting with Dmitri\", time_max=\"2023-12-18 18:00:00\", time_min=\"2023-12-18 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_start\", new_value=\"2023-12-18 10:00:00\", query=\"dmitri\", time_max=\"2023-12-18 18:00:00\", time_min=\"2023-12-18 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.create_event\", field=\"event_start\", new_value=\"2023-12-18 10:00:00\", query=\"Meeting with Dmitri\", time_max=\"2023-12-18 18:00:00\", time_min=\"2023-12-18 09:00:00\")",
+            "calendar.update_event.func(event_id=\"calendar.search_events\", field=\"event_start\", new_value=\"2023-12-18 11:00:00\", query=\"dmitri\", time_max=\"2023-12-18 18:00:00\", time_min=\"2023-12-18 09:00:00\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 4.6836,
+          "total_tokens": 7011,
+          "error_type": null,
+          "execution_path": [
+            "calendar.update_event.func(event_id=\"calendar.create_event\", field=\"duration\", new_value=\"60\")",
+            "calendar.create_event.func(duration=\"60\", event_name=\"Meeting with Dmitri\", event_start=\"2023-12-18 09:00:00\", participant_email=\"dmitri@example.com\")",
+            "calendar.update_event.func(event_id=\"00000300\", field=\"event_start\", new_value=\"2023-12-18 10:00:00\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-015",
+      "description": "I need to cancel my next meeting with fatima. Can you do that for me please?",
+      "category": "workbench",
+      "domains": [
+        "calendar"
+      ],
+      "gold_answer": [
+        "calendar.delete_event.func(event_id=\"00000200\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 2.5818,
+          "total_tokens": 6674,
+          "error_type": null,
+          "execution_path": [
+            "calendar.get_event_information_by_id.func(event_id=\"00000000\", field=\"event_start\")",
+            "calendar.update_event.func(event_id=\"00000000\", field=\"event_start\", new_value=\"2023-09-04 14:00:00\")",
+            "calendar.delete_event.func(event_id=\"00000000\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 6.0366,
+          "total_tokens": 12451,
+          "error_type": null,
+          "execution_path": [
+            "calendar.search_events.func(query=\"fatima\", time_max=\"18:00:00\", time_min=\"09:00:00\")",
+            "calendar.search_events.func(query=\"fatima\", time_max=\"18:00:00\", time_min=\"09:00:00\")",
+            "calendar.search_events.func(query=\"fatima\", time_max=\"18:00:00\", time_min=\"09:00:00\")",
+            "calendar.search_events.func(query=\"fatima\", time_max=\"18:00:00\", time_min=\"09:00:00\")",
+            "calendar.search_events.func(query=\"fatima\", time_max=\"18:00:00\", time_min=\"09:00:00\")",
+            "calendar.search_events.func(query=\"fatima\", time_max=\"18:00:00\", time_min=\"09:00:00\")",
+            "calendar.search_events.func(query=\"fatima\", time_max=\"18:00:00\", time_min=\"09:00:00\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-016",
+      "description": "If I haven't met with amir in the last 4 days, schedule a 30-minute meeting called 'catch-up' for my first free slot from tomorrow",
+      "category": "workbench",
+      "domains": [
+        "calendar"
+      ],
+      "gold_answer": [
+        "calendar.create_event.func(event_name=\"catch-up\", participant_email=\"amir.ali@atlas.com\", event_start=\"2023-12-01 13:00:00\", duration=\"30\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 1.1329,
+          "total_tokens": 1636,
+          "error_type": null,
+          "execution_path": [],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 14.8503,
+          "total_tokens": 4871,
+          "error_type": null,
+          "execution_path": [
+            "calendar.create_event.func(duration=\"30\", event_name=\"catch-up\", event_start=\"calendar.get_first_free_time\", name=\"amir\", participant_email=\"company_directory.find_email_address\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-017",
+      "description": "Delete my meetings on Friday before 12",
+      "category": "workbench",
+      "domains": [
+        "calendar"
+      ],
+      "gold_answer": [
+        "calendar.delete_event.func(event_id=\"00000165\")",
+        "calendar.delete_event.func(event_id=\"00000091\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 2.2781,
+          "total_tokens": 6779,
+          "error_type": null,
+          "execution_path": [
+            "calendar.search_events.func(query=\"meeting\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 12:00:00\")",
+            "calendar.delete_event.func(event_id=\"00000027\")",
+            "calendar.search_events.func(query=\"meeting\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 12:00:00\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 2.5477,
+          "total_tokens": 6955,
+          "error_type": null,
+          "execution_path": [
+            "calendar.search_events.func(query=\"meeting\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 12:00:00\")",
+            "calendar.delete_event.func(event_id=\"00000027\")",
+            "calendar.search_events.func(query=\"meeting\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 12:00:00\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-018",
+      "description": "Cancel my meetings on Friday before 10:30",
+      "category": "workbench",
+      "domains": [
+        "calendar"
+      ],
+      "gold_answer": [
+        "calendar.delete_event.func(event_id=\"00000165\")",
+        "calendar.delete_event.func(event_id=\"00000091\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 2.0165,
+          "total_tokens": 6767,
+          "error_type": null,
+          "execution_path": [
+            "calendar.search_events.func(query=\"meeting\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 10:30:00\")",
+            "calendar.delete_event.func(event_id=\"00000027\")",
+            "calendar.search_events.func(query=\"meeting\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 10:30:00\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 2.7118,
+          "total_tokens": 6984,
+          "error_type": null,
+          "execution_path": [
+            "calendar.search_events.func(query=\"meeting\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 10:30:00\")",
+            "calendar.delete_event.func(event_id=\"00000027\")",
+            "calendar.search_events.func(query=\"meeting\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 10:30:00\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-019",
+      "description": "something came up. Can you cancel my meetings on Friday before 10:30?",
+      "category": "workbench",
+      "domains": [
+        "calendar"
+      ],
+      "gold_answer": [
+        "calendar.delete_event.func(event_id=\"00000165\")",
+        "calendar.delete_event.func(event_id=\"00000091\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 1.343,
+          "total_tokens": 4983,
+          "error_type": null,
+          "execution_path": [
+            "calendar.search_events.func(query=\"meeting\", time_max=\"2023-11-30 18:00:00\", time_min=\"2023-11-30 10:30:00\")",
+            "calendar.delete_event.func(event_id=\"00000027\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 2.5416,
+          "total_tokens": 9191,
+          "error_type": null,
+          "execution_path": [
+            "calendar.search_events.func(query=\"\", time_max=\"2023-12-01 00:00:00\", time_min=\"2023-11-30 10:30:00\")",
+            "calendar.delete_event.func(event_id=\"00000225\")",
+            "calendar.delete_event.func(event_id=\"00000027\")",
+            "calendar.delete_event.func(event_id=\"00000253\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-020",
+      "description": "Please plot for me the distribution of total visits and average session duration between November 15 and November 24",
+      "category": "workbench",
+      "domains": [
+        "analytics"
+      ],
+      "gold_answer": [
+        "analytics.create_plot.func(time_min=\"2023-11-15\", time_max=\"2023-11-24\", value_to_plot=\"total_visits\", plot_type=\"histogram\")",
+        "analytics.create_plot.func(time_min=\"2023-11-15\", time_max=\"2023-11-24\", value_to_plot=\"session_duration_seconds\", plot_type=\"histogram\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 1.0,
+          "latency_sec": 2.7185,
+          "total_tokens": 6569,
+          "error_type": null,
+          "execution_path": [
+            "analytics.create_plot.func(plot_type=\"histogram\", time_max=\"2023-11-24\", time_min=\"2023-11-15\", value_to_plot=\"total_visits\")",
+            "analytics.create_plot.func(plot_type=\"histogram\", time_max=\"2023-11-24\", time_min=\"2023-11-15\", value_to_plot=\"session_duration_seconds\")"
+          ],
+          "grading": {
+            "outcome_match": true,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 1.0,
+          "latency_sec": 9.7651,
+          "total_tokens": 7389,
+          "error_type": null,
+          "execution_path": [
+            "analytics.create_plot.func(plot_type=\"histogram\", time_max=\"2023-11-24\", time_min=\"2023-11-15\", value_to_plot=\"total_visits\")",
+            "analytics.create_plot.func(plot_type=\"histogram\", time_max=\"2023-11-24\", time_min=\"2023-11-15\", value_to_plot=\"session_duration_seconds\")"
+          ],
+          "grading": {
+            "outcome_match": true,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-021",
+      "description": "Please plot for me the distribution of total visits and average session duration between November 24 and November 28",
+      "category": "workbench",
+      "domains": [
+        "analytics"
+      ],
+      "gold_answer": [
+        "analytics.create_plot.func(time_min=\"2023-11-24\", time_max=\"2023-11-28\", value_to_plot=\"total_visits\", plot_type=\"histogram\")",
+        "analytics.create_plot.func(time_min=\"2023-11-24\", time_max=\"2023-11-28\", value_to_plot=\"session_duration_seconds\", plot_type=\"histogram\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 1.0,
+          "latency_sec": 2.7114,
+          "total_tokens": 6569,
+          "error_type": null,
+          "execution_path": [
+            "analytics.create_plot.func(plot_type=\"histogram\", time_max=\"2023-11-28\", time_min=\"2023-11-24\", value_to_plot=\"total_visits\")",
+            "analytics.create_plot.func(plot_type=\"histogram\", time_max=\"2023-11-28\", time_min=\"2023-11-24\", value_to_plot=\"session_duration_seconds\")"
+          ],
+          "grading": {
+            "outcome_match": true,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 1.0,
+          "latency_sec": 12.4568,
+          "total_tokens": 7609,
+          "error_type": null,
+          "execution_path": [
+            "analytics.create_plot.func(plot_type=\"histogram\", time_max=\"2023-11-28\", time_min=\"2023-11-24\", value_to_plot=\"total_visits\")",
+            "analytics.create_plot.func(plot_type=\"histogram\", time_max=\"2023-11-28\", time_min=\"2023-11-24\", value_to_plot=\"session_duration_seconds\")"
+          ],
+          "grading": {
+            "outcome_match": true,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-022",
+      "description": "was total visits more than 3 at any time since October 6? If so, please plot it as a line chart",
+      "category": "workbench",
+      "domains": [
+        "analytics"
+      ],
+      "gold_answer": [
+        "analytics.create_plot.func(time_min=\"2023-10-06\", time_max=\"2023-11-29\", value_to_plot=\"total_visits\", plot_type=\"line\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 2.7765,
+          "total_tokens": 7717,
+          "error_type": null,
+          "execution_path": [
+            "analytics.total_visits_count.func(time_max=\"2023-11-30\", time_min=\"2023-10-06\")",
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-11-30\", time_min=\"2023-10-06\", value_to_plot=\"total_visits\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 4.3627,
+          "total_tokens": 8091,
+          "error_type": null,
+          "execution_path": [
+            "analytics.total_visits_count.func(time_max=\"2023-11-30\", time_min=\"2023-10-06\")",
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-11-30\", time_min=\"2023-10-06\", value_to_plot=\"total_visits\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-023",
+      "description": "Can you make a line chart of total visits since the last 4 weeks if it was more than 10 at any time in the last 4 weeks?",
+      "category": "workbench",
+      "domains": [
+        "analytics"
+      ],
+      "gold_answer": [
+        "analytics.create_plot.func(time_min=\"2023-11-02\", time_max=\"2023-11-29\", value_to_plot=\"total_visits\", plot_type=\"line\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 1.6757,
+          "total_tokens": 4306,
+          "error_type": null,
+          "execution_path": [
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-11-30\", time_min=\"2023-11-09\", value_to_plot=\"total_visits\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 8.8306,
+          "total_tokens": 5180,
+          "error_type": null,
+          "execution_path": [
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-11-30\", time_min=\"2023-11-09\", value_to_plot=\"total_visits\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-024",
+      "description": "Was average session duration less than 2 at any time in the last 2 weeks? If so, please plot it as a line chart",
+      "category": "workbench",
+      "domains": [
+        "analytics"
+      ],
+      "gold_answer": [],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 2.8075,
+          "total_tokens": 6966,
+          "error_type": null,
+          "execution_path": [
+            "analytics.get_average_session_duration.func(time_max=\"2023-12-01\", time_min=\"2023-11-16\")",
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-12-01\", time_min=\"2023-11-16\", value_to_plot=\"session_duration_seconds\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 4.7318,
+          "total_tokens": 7383,
+          "error_type": null,
+          "execution_path": [
+            "analytics.get_average_session_duration.func(time_max=\"2023-12-01\", time_min=\"2023-11-16\")",
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-12-01\", time_min=\"2023-11-16\", value_to_plot=\"session_duration_seconds\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-025",
+      "description": "If average session duration is more than 3% lower than October 4, make a line plot of it since then",
+      "category": "workbench",
+      "domains": [
+        "analytics"
+      ],
+      "gold_answer": [
+        "analytics.create_plot.func(time_min=\"2023-10-04\", time_max=\"2023-11-29\", value_to_plot=\"session_duration_seconds\", plot_type=\"line\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 4.3828,
+          "total_tokens": 11717,
+          "error_type": null,
+          "execution_path": [
+            "analytics.get_average_session_duration.func(time_max=\"2023-11-30\", time_min=\"2023-10-01\")",
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-11-30\", time_min=\"2023-10-04\", value_to_plot=\"average_session_duration\")",
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-11-30\", time_min=\"2023-10-04\", value_to_plot=\"session_duration_seconds\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 9.6014,
+          "total_tokens": 12351,
+          "error_type": null,
+          "execution_path": [
+            "analytics.get_average_session_duration.func(time_max=\"2023-11-30\", time_min=\"2023-10-01\")",
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-11-30\", time_min=\"2023-10-04\", value_to_plot=\"average_session_duration\")",
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-11-30\", time_min=\"2023-10-04\", value_to_plot=\"session_duration_seconds\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-026",
+      "description": "Is total visits more than 2% lower than it was on Saturday? If so, please plot it as a line chart since then",
+      "category": "workbench",
+      "domains": [
+        "analytics"
+      ],
+      "gold_answer": [
+        "analytics.create_plot.func(time_min=\"2023-11-25\", time_max=\"2023-11-29\", value_to_plot=\"total_visits\", plot_type=\"line\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 3.7984,
+          "total_tokens": 6618,
+          "error_type": null,
+          "execution_path": [
+            "analytics.total_visits_count.func(time_max=\"2023-11-25\", time_min=\"2023-11-25\")",
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-11-30\", time_min=\"2023-11-25\", value_to_plot=\"total_visits\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 11.5682,
+          "total_tokens": 9842,
+          "error_type": null,
+          "execution_path": [
+            "analytics.total_visits_count.func(time_max=\"2023-11-25\", time_min=\"2023-11-25\")",
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-11-25\", time_min=\"2023-11-25\", value_to_plot=\"total_visits\")",
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-11-25\", time_min=\"2023-11-25\", value_to_plot=\"total_visits\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-027",
+      "description": "Was total visits on monday more than 5% higher than it was the previous monday? If so, please plot it as a line chart",
+      "category": "workbench",
+      "domains": [
+        "analytics"
+      ],
+      "gold_answer": [],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 3.9041,
+          "total_tokens": 8849,
+          "error_type": null,
+          "execution_path": [
+            "analytics.total_visits_count.func(time_max=\"2023-11-20\", time_min=\"2023-11-20\")",
+            "analytics.total_visits_count.func(time_max=\"2023-11-27\", time_min=\"2023-11-27\")",
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-11-27\", time_min=\"2023-11-20\", value_to_plot=\"total_visits\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 11.4853,
+          "total_tokens": 12028,
+          "error_type": null,
+          "execution_path": [
+            "analytics.total_visits_count.func(time_max=\"2023-11-20\", time_min=\"2023-11-20\")",
+            "analytics.total_visits_count.func(time_max=\"2023-11-27\", time_min=\"2023-11-27\")",
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-11-27\", time_min=\"2023-11-20\", value_to_plot=\"total_visits\")",
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-11-27\", time_min=\"2023-11-20\", value_to_plot=\"total_visits\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-028",
+      "description": "If engaged users on sunday was more than 2% lower than it was the previous sunday, make a line plot of it over that period.",
+      "category": "workbench",
+      "domains": [
+        "analytics"
+      ],
+      "gold_answer": [
+        "analytics.create_plot.func(time_min=\"2023-11-19\", time_max=\"2023-11-26\", value_to_plot=\"user_engaged\", plot_type=\"line\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 3.4679,
+          "total_tokens": 9116,
+          "error_type": null,
+          "execution_path": [
+            "analytics.engaged_users_count.func(time_max=\"2023-11-26\", time_min=\"2023-11-19\")",
+            "analytics.engaged_users_count.func(time_max=\"2023-12-03\", time_min=\"2023-11-26\")",
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-12-03\", time_min=\"2023-11-19\", value_to_plot=\"user_engaged\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 12.7626,
+          "total_tokens": 10104,
+          "error_type": null,
+          "execution_path": [
+            "analytics.engaged_users_count.func(time_max=\"2023-11-26\", time_min=\"2023-11-19\")",
+            "analytics.engaged_users_count.func(time_max=\"2023-12-03\", time_min=\"2023-11-26\")",
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-12-03\", time_min=\"2023-11-19\", value_to_plot=\"user_engaged\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-029",
+      "description": "if engaged users grew by more than total visits since Tuesday, make a line plot of both since then",
+      "category": "workbench",
+      "domains": [
+        "analytics"
+      ],
+      "gold_answer": [
+        "analytics.create_plot.func(time_min=\"2023-11-28\", time_max=\"2023-11-29\", value_to_plot=\"user_engaged\", plot_type=\"line\")",
+        "analytics.create_plot.func(time_min=\"2023-11-28\", time_max=\"2023-11-29\", value_to_plot=\"total_visits\", plot_type=\"line\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 3.5433,
+          "total_tokens": 6659,
+          "error_type": null,
+          "execution_path": [
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-11-30\", time_min=\"2023-11-28\", value_to_plot=\"engaged_users\")",
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-11-30\", time_min=\"2023-11-28\", value_to_plot=\"total_visits\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 5.8822,
+          "total_tokens": 7067,
+          "error_type": null,
+          "execution_path": [
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-11-30\", time_min=\"2023-11-29\", value_to_plot=\"engaged_users\")",
+            "analytics.create_plot.func(plot_type=\"line\", time_max=\"2023-11-30\", time_min=\"2023-11-29\", value_to_plot=\"total_visits\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-030",
+      "description": "Move all of kofi's tasks that are in progress to in review",
+      "category": "workbench",
+      "domains": [
+        "project_management"
+      ],
+      "gold_answer": [],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 1.0,
+          "latency_sec": 14.4944,
+          "total_tokens": 20808,
+          "error_type": null,
+          "execution_path": [
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Front end\", due_date=\"2023-11-30\", field=\"task_name\", list_name=\"In Progress\", new_value=\"In Review\", task_id=\"project_management.search_tasks\", task_name=\"Kofi\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Front end\", due_date=\"2023-11-30\", field=\"list_name\", list_name=\"In Progress\", new_value=\"In Review\", task_id=\"project_management.search_tasks\", task_name=\"Kofi\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Front end\", due_date=\"2023-11-30\", field=\"board\", list_name=\"In Progress\", new_value=\"In Review\", task_id=\"project_management.search_tasks\", task_name=\"Kofi\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Back end\", due_date=\"2023-11-30\", field=\"list_name\", list_name=\"In Progress\", new_value=\"In Review\", task_id=\"project_management.search_tasks\", task_name=\"Kofi\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Design\", due_date=\"2023-11-30\", field=\"list_name\", list_name=\"In Progress\", new_value=\"In Review\", task_id=\"project_management.search_tasks\", task_name=\"Kofi\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Design\", due_date=\"2023-11-30\", field=\"list_name\", list_name=\"In Progress\", new_value=\"In Review\", task_id=\"project_management.search_tasks\", task_name=\"Kofi\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Design\", due_date=\"2023-11-30\", field=\"list_name\", list_name=\"In Progress\", new_value=\"In Review\", task_id=\"project_management.search_tasks\", task_name=\"Kofi\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Design\", due_date=\"2023-11-30\", field=\"list_name\", list_name=\"In Progress\", new_value=\"In Review\", task_id=\"project_management.search_tasks\", task_name=\"Kofi\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Design\", due_date=\"2023-11-30\", field=\"list_name\", list_name=\"In Progress\", new_value=\"In Review\", task_id=\"project_management.search_tasks\", task_name=\"Kofi\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Design\", due_date=\"2023-11-30\", field=\"list_name\", list_name=\"In Progress\", new_value=\"In Review\", task_id=\"project_management.search_tasks\", task_name=\"Kofi\")"
+          ],
+          "grading": {
+            "outcome_match": true,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 4.9083,
+          "total_tokens": 10519,
+          "error_type": null,
+          "execution_path": [
+            "project_management.update_task.func(field=\"task_id\", new_value=\"In Review\", task_id=\"project_management.search_tasks\", task_name=\"kofi\")",
+            "project_management.update_task.func(field=\"task_id\", new_value=\"In Review\", task_id=\"project_management.search_tasks\", task_name=\"kofi\")",
+            "project_management.update_task.func(field=\"task_id\", new_value=\"In Review\", task_id=\"project_management.search_tasks\", task_name=\"kofi\")",
+            "project_management.search_tasks.func(list_name=\"In progress\", task_name=\"kofi\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"In Review\", task_id=\"00000001\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-031",
+      "description": "I need to add a new task to the Design backlog called Develop prototype for data export and assign it to fatima. It's due on December 6. Can you do that?",
+      "category": "workbench",
+      "domains": [
+        "project_management"
+      ],
+      "gold_answer": [
+        "project_management.create_task.func(task_name=\"Develop prototype for data export\", board=\"Design\", assigned_to_email=\"fatima.khan@atlas.com\", due_date=\"2023-12-06\", list_name=\"Backlog\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 1.7163,
+          "total_tokens": 3308,
+          "error_type": null,
+          "execution_path": [
+            "project_management.create_task.func(assigned_to_email=\"fatima@example.com\", board=\"Design backlog\", due_date=\"2023-12-06\", list_name=\"Design\", task_name=\"Develop prototype for data export\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 1.3244,
+          "total_tokens": 349,
+          "error_type": null,
+          "execution_path": [],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-032",
+      "description": "Add a new task to the Front end backlog called Integrate Twilio SMS API with frontend and assign it to santiago. It's due on December 7.",
+      "category": "workbench",
+      "domains": [
+        "project_management"
+      ],
+      "gold_answer": [
+        "project_management.create_task.func(task_name=\"Integrate Twilio SMS API with frontend\", board=\"Front end\", assigned_to_email=\"santiago.martinez@atlas.com\", due_date=\"2023-12-07\", list_name=\"Backlog\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 10.6119,
+          "total_tokens": 20436,
+          "error_type": null,
+          "execution_path": [
+            "project_management.create_task.func(assigned_to_email=\"santiago@example.com\", board=\"Front end\", due_date=\"2023-12-07\", list_name=\"Backlog\", task_name=\"Integrate Twilio SMS API with frontend\")",
+            "project_management.create_task.func(assigned_to_email=\"company_directory.find_email_address(name=\"santiago\")\", board=\"Front end\", due_date=\"2023-12-07\", list_name=\"Backlog\", task_name=\"Integrate Twilio SMS API with frontend\")",
+            "project_management.create_task.func(assigned_to_email=\"company_directory.find_email_address(name=\"santiago\")\", board=\"Front end\", due_date=\"2023-12-07\", list_name=\"Backlog\", task_name=\"Integrate Twilio SMS API with frontend\")",
+            "project_management.create_task.func(assigned_to_email=\"company_directory.find_email_address(name=\"santiago\")\", board=\"Front end\", due_date=\"2023-12-07\", list_name=\"Backlog\", task_name=\"Integrate Twilio SMS API with frontend\")",
+            "project_management.create_task.func(assigned_to_email=\"company_directory.find_email_address(name=\"santiago\")\", board=\"Front end\", due_date=\"2023-12-07\", list_name=\"Backlog\", task_name=\"Integrate Twilio SMS API with frontend\")",
+            "project_management.create_task.func(assigned_to_email=\"company_directory.find_email_address(name=\"santiago\")\", board=\"Front end\", due_date=\"2023-12-07\", list_name=\"Backlog\", task_name=\"Integrate Twilio SMS API with frontend\")",
+            "project_management.create_task.func(assigned_to_email=\"company_directory.find_email_address(name=\"santiago\")\", board=\"Front end\", due_date=\"2023-12-07\", list_name=\"Backlog\", task_name=\"Integrate Twilio SMS API with frontend\")",
+            "project_management.create_task.func(assigned_to_email=\"company_directory.find_email_address(name=\"santiago\")\", board=\"Front end\", due_date=\"2023-12-07\", list_name=\"Backlog\", task_name=\"Integrate Twilio SMS API with frontend\")",
+            "project_management.create_task.func(assigned_to_email=\"company_directory.find_email_address(name=\"santiago\")\", board=\"Front end\", due_date=\"2023-12-07\", list_name=\"Backlog\", task_name=\"Integrate Twilio SMS API with frontend\")",
+            "project_management.create_task.func(assigned_to_email=\"company_directory.find_email_address(name=\"santiago\")\", board=\"Front end\", due_date=\"2023-12-07\", list_name=\"Backlog\", task_name=\"Integrate Twilio SMS API with frontend\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 1.4691,
+          "total_tokens": 353,
+          "error_type": null,
+          "execution_path": [],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-033",
+      "description": "Add a new task to the Front end backlog called Fix bug in user authentication module and assign it to yuki. It's due on December 6.",
+      "category": "workbench",
+      "domains": [
+        "project_management"
+      ],
+      "gold_answer": [
+        "project_management.create_task.func(task_name=\"Fix bug in user authentication module\", board=\"Front end\", assigned_to_email=\"yuki.tanaka@atlas.com\", due_date=\"2023-12-06\", list_name=\"Backlog\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 10.3283,
+          "total_tokens": 20306,
+          "error_type": null,
+          "execution_path": [
+            "project_management.create_task.func(assigned_to_email=\"yuki@example.com\", board=\"Front end\", due_date=\"2023-12-06\", list_name=\"Backlog\", task_name=\"Fix bug in user authentication module\")",
+            "project_management.create_task.func(assigned_to_email=\"company_directory.find_email_address(name=\"yuki\")\", board=\"Front end\", due_date=\"2023-12-06\", list_name=\"Backlog\", task_name=\"Fix bug in user authentication module\")",
+            "project_management.create_task.func(assigned_to_email=\"company_directory.find_email_address(name=\"yuki\")\", board=\"Front end\", due_date=\"2023-12-06\", list_name=\"Backlog\", task_name=\"Fix bug in user authentication module\")",
+            "project_management.create_task.func(assigned_to_email=\"company_directory.find_email_address(name=\"yuki\")\", board=\"Front end\", due_date=\"2023-12-06\", list_name=\"Backlog\", task_name=\"Fix bug in user authentication module\")",
+            "project_management.create_task.func(assigned_to_email=\"company_directory.find_email_address(name=\"yuki\")\", board=\"Front end\", due_date=\"2023-12-06\", list_name=\"Backlog\", task_name=\"Fix bug in user authentication module\")",
+            "project_management.create_task.func(assigned_to_email=\"company_directory.find_email_address(name=\"yuki\")\", board=\"Front end\", due_date=\"2023-12-06\", list_name=\"Backlog\", task_name=\"Fix bug in user authentication module\")",
+            "project_management.create_task.func(assigned_to_email=\"company_directory.find_email_address(name=\"yuki\")\", board=\"Front end\", due_date=\"2023-12-06\", list_name=\"Backlog\", task_name=\"Fix bug in user authentication module\")",
+            "project_management.create_task.func(assigned_to_email=\"company_directory.find_email_address(name=\"yuki\")\", board=\"Front end\", due_date=\"2023-12-06\", list_name=\"Backlog\", task_name=\"Fix bug in user authentication module\")",
+            "project_management.create_task.func(assigned_to_email=\"company_directory.find_email_address(name=\"yuki\")\", board=\"Front end\", due_date=\"2023-12-06\", list_name=\"Backlog\", task_name=\"Fix bug in user authentication module\")",
+            "project_management.create_task.func(assigned_to_email=\"company_directory.find_email_address(name=\"yuki\")\", board=\"Front end\", due_date=\"2023-12-06\", list_name=\"Backlog\", task_name=\"Fix bug in user authentication module\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 0.9501,
+          "total_tokens": 305,
+          "error_type": null,
+          "execution_path": [],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-034",
+      "description": "can you move all of aisha's overdue tasks in the backlog to in progress?",
+      "category": "workbench",
+      "domains": [
+        "project_management"
+      ],
+      "gold_answer": [],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 1.0,
+          "latency_sec": 11.4353,
+          "total_tokens": 20116,
+          "error_type": null,
+          "execution_path": [
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Backlog\", due_date=\"2023-11-30\", field=\"list_name\", name=\"Aisha\", new_value=\"In Progress\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Backlog\", due_date=\"2023-11-30\", field=\"list_name\", name=\"Aisha\", new_value=\"In Progress\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Backlog\", due_date=\"2023-11-30\", field=\"list_name\", name=\"Aisha\", new_value=\"In Progress\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Backlog\", due_date=\"2023-11-30\", field=\"list_name\", name=\"Aisha\", new_value=\"In Progress\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Backlog\", due_date=\"2023-11-30\", field=\"list_name\", name=\"Aisha\", new_value=\"In Progress\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Backlog\", due_date=\"2023-11-30\", field=\"list_name\", name=\"Aisha\", new_value=\"In Progress\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Backlog\", due_date=\"2023-11-30\", field=\"list_name\", name=\"Aisha\", new_value=\"In Progress\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Backlog\", due_date=\"2023-11-30\", field=\"list_name\", name=\"Aisha\", new_value=\"In Progress\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Backlog\", due_date=\"2023-11-30\", field=\"list_name\", name=\"Aisha\", new_value=\"In Progress\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Backlog\", due_date=\"2023-11-30\", field=\"list_name\", name=\"Aisha\", new_value=\"In Progress\", task_id=\"project_management.search_tasks\")"
+          ],
+          "grading": {
+            "outcome_match": true,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 1.0,
+          "latency_sec": 9.3287,
+          "total_tokens": 13354,
+          "error_type": null,
+          "execution_path": [
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Backlog\", due_date=\"2023-11-30\", field=\"list_name\", name=\"Aisha\", new_value=\"In Progress\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Backlog\", due_date=\"2023-11-30\", field=\"list_name\", name=\"Aisha\", new_value=\"In Progress\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Backlog\", due_date=\"2023-11-30\", field=\"list_name\", name=\"Aisha\", new_value=\"In Progress\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Backlog\", due_date=\"2023-11-30\", field=\"list_name\", name=\"Aisha\", new_value=\"In Progress\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Backlog\", due_date=\"2023-11-30\", field=\"list_name\", name=\"Aisha\", new_value=\"In Progress\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Backlog\", due_date=\"2023-11-30\", field=\"list_name\", name=\"Aisha\", new_value=\"In Progress\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", board=\"Backlog\", due_date=\"2023-11-30\", field=\"list_name\", name=\"Aisha\", new_value=\"In Progress\", task_id=\"project_management.search_tasks\")"
+          ],
+          "grading": {
+            "outcome_match": true,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-035",
+      "description": "fatima has a bunch of overdue tasks in the backlog. Can you move them to in progress?",
+      "category": "workbench",
+      "domains": [
+        "project_management"
+      ],
+      "gold_answer": [],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 2.6428,
+          "total_tokens": 6687,
+          "error_type": null,
+          "execution_path": [
+            "project_management.search_tasks.func(assigned_to_email=\"fatima@example.com\", due_date=\"2023-11-30\", list_name=\"backlog\", task_name=\"\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"in progress\", task_id=\"00000000\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"In Progress\", task_id=\"00000000\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 1.0,
+          "latency_sec": 1.2671,
+          "total_tokens": 310,
+          "error_type": null,
+          "execution_path": [],
+          "grading": {
+            "outcome_match": true,
+            "exact_side_effect_match": true
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-036",
+      "description": "I've finished reviewing all of fatima's tasks. Can you move all the ones that are in review to completed?",
+      "category": "workbench",
+      "domains": [
+        "project_management"
+      ],
+      "gold_answer": [
+        "project_management.update_task.func(task_id=\"00000035\", field=\"list_name\", new_value=\"Completed\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 6.3231,
+          "total_tokens": 19028,
+          "error_type": null,
+          "execution_path": [
+            "project_management.update_task.func(field=\"list_name\", new_value=\"completed\", task_id=\"get_task_information_by_id\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"completed\", task_id=\"get_task_information_by_id\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"completed\", task_id=\"get_task_information_by_id\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"completed\", task_id=\"get_task_information_by_id\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"completed\", task_id=\"get_task_information_by_id\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"completed\", task_id=\"get_task_information_by_id\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"completed\", task_id=\"get_task_information_by_id\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"completed\", task_id=\"get_task_information_by_id\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"completed\", task_id=\"get_task_information_by_id\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"completed\", task_id=\"get_task_information_by_id\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 5.6662,
+          "total_tokens": 12794,
+          "error_type": null,
+          "execution_path": [
+            "project_management.update_task.func(field=\"list_name\", new_value=\"completed\", task_id=\"get_task_information_by_id\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"completed\", task_id=\"get_task_information_by_id\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"completed\", task_id=\"get_task_information_by_id\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"completed\", task_id=\"get_task_information_by_id\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"completed\", task_id=\"get_task_information_by_id\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"completed\", task_id=\"get_task_information_by_id\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"completed\", task_id=\"get_task_information_by_id\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-037",
+      "description": "I need to reassign all of amir's in progress tasks to anaya. Can you do that?",
+      "category": "workbench",
+      "domains": [
+        "project_management"
+      ],
+      "gold_answer": [],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 1.0,
+          "latency_sec": 9.2903,
+          "total_tokens": 19836,
+          "error_type": null,
+          "execution_path": [
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", field=\"assigned_to_email\", name=\"Amir\", new_value=\"company_directory.find_email_address\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", field=\"assigned_to_email\", name=\"Anaya\", new_value=\"company_directory.find_email_address\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", field=\"assigned_to_email\", name=\"Anaya\", new_value=\"company_directory.find_email_address\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", field=\"assigned_to_email\", name=\"Anaya\", new_value=\"company_directory.find_email_address\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", field=\"assigned_to_email\", name=\"Anaya\", new_value=\"company_directory.find_email_address\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", field=\"assigned_to_email\", name=\"Anaya\", new_value=\"company_directory.find_email_address\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", field=\"assigned_to_email\", name=\"Anaya\", new_value=\"company_directory.find_email_address\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", field=\"assigned_to_email\", name=\"Anaya\", new_value=\"company_directory.find_email_address\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", field=\"assigned_to_email\", name=\"Anaya\", new_value=\"company_directory.find_email_address\", task_id=\"project_management.search_tasks\")",
+            "project_management.update_task.func(assigned_to_email=\"company_directory.find_email_address\", field=\"assigned_to_email\", name=\"Anaya\", new_value=\"company_directory.find_email_address\", task_id=\"project_management.search_tasks\")"
+          ],
+          "grading": {
+            "outcome_match": true,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 1.0,
+          "latency_sec": 4.9852,
+          "total_tokens": 12691,
+          "error_type": null,
+          "execution_path": [
+            "project_management.search_tasks.func(assigned_to_email=\"amir@example.com\", list_name=\"In Progress\")",
+            "project_management.update_task.func(field=\"assigned_to_email\", new_value=\"anaya@example.com\", task_id=\"00000001\")",
+            "company_directory.find_email_address.func(name=\"Anaya\")",
+            "project_management.search_tasks.func(assigned_to_email=\"anaya.patel@atlas.com\", list_name=\"In Progress\")",
+            "project_management.update_task.func(field=\"assigned_to_email\", new_value=\"anaya.patel@atlas.com\", task_id=\"00000196\")",
+            "project_management.update_task.func(field=\"assigned_to_email\", new_value=\"anaya.patel@atlas.com\", task_id=\"00000159\")"
+          ],
+          "grading": {
+            "outcome_match": true,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-038",
+      "description": "jinsoo is on vacation now so move all their unfinished tasks to the backlog.",
+      "category": "workbench",
+      "domains": [
+        "project_management"
+      ],
+      "gold_answer": [
+        "project_management.update_task.func(task_id=\"00000267\", field=\"list_name\", new_value=\"Backlog\")",
+        "project_management.update_task.func(task_id=\"00000214\", field=\"list_name\", new_value=\"Backlog\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 1.6198,
+          "total_tokens": 6465,
+          "error_type": null,
+          "execution_path": [
+            "project_management.search_tasks.func(assigned_to_email=\"jinsoo@example.com\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"Backlog\", task_id=\"00000001\")",
+            "project_management.search_tasks.func(assigned_to_email=\"jinsoo@example.com\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 10.8744,
+          "total_tokens": 7428,
+          "error_type": null,
+          "execution_path": [
+            "project_management.search_tasks.func(assigned_to_email=\"jinsoo@example.com\")",
+            "project_management.update_task.func(field=\"list_name\", new_value=\"Backlog\", task_id=\"00000001\")",
+            "project_management.search_tasks.func(assigned_to_email=\"jinsoo@example.com\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-039",
+      "description": "can you take carlos's most urgent task and reassign it to luis?",
+      "category": "workbench",
+      "domains": [
+        "project_management"
+      ],
+      "gold_answer": [
+        "project_management.update_task.func(task_id=\"00000039\", field=\"assigned_to_email\", new_value=\"luis.ortiz@atlas.com\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 2.9705,
+          "total_tokens": 8408,
+          "error_type": null,
+          "execution_path": [
+            "project_management.get_task_information_by_id.func(field=\"task_name\", task_id=\"00000001\")",
+            "project_management.update_task.func(field=\"assigned_to_email\", new_value=\"luis@example.com\", task_id=\"00000001\")",
+            "company_directory.find_email_address.func(name=\"Luis\")",
+            "project_management.update_task.func(field=\"assigned_to_email\", new_value=\"luis.ortiz@atlas.com\", task_id=\"00000001\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 3.8602,
+          "total_tokens": 8677,
+          "error_type": null,
+          "execution_path": [
+            "project_management.get_task_information_by_id.func(field=\"assigned_to_email\", task_id=\"00000001\")",
+            "project_management.update_task.func(field=\"assigned_to_email\", new_value=\"luis.gonzalez@atlas.com\", task_id=\"00000001\")",
+            "company_directory.find_email_address.func(name=\"Luis\")",
+            "project_management.update_task.func(field=\"assigned_to_email\", new_value=\"luis.ortiz@atlas.com\", task_id=\"00000001\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-040",
+      "description": "Quinn Brown has moved to lost status. Can you update that in the crm?",
+      "category": "workbench",
+      "domains": [
+        "customer_relationship_manager"
+      ],
+      "gold_answer": [
+        "customer_relationship_manager.update_customer.func(customer_id=\"00000188\", field=\"status\", new_value=\"Lost\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 0.7514,
+          "total_tokens": 3454,
+          "error_type": null,
+          "execution_path": [
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000001\", field=\"status\", new_value=\"Lost\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 1.643,
+          "total_tokens": 3723,
+          "error_type": null,
+          "execution_path": [
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000002\", field=\"status\", new_value=\"Lost\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-041",
+      "description": "We no longer need to keep Shannon Wilson in the crm. Can you delete them?",
+      "category": "workbench",
+      "domains": [
+        "customer_relationship_manager"
+      ],
+      "gold_answer": [
+        "customer_relationship_manager.delete_customer.func(customer_id=\"00000124\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 0.5463,
+          "total_tokens": 3425,
+          "error_type": null,
+          "execution_path": [
+            "customer_relationship_manager.delete_customer.func(customer_id=\"00000002\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 1.2303,
+          "total_tokens": 3678,
+          "error_type": null,
+          "execution_path": [
+            "customer_relationship_manager.delete_customer.func(customer_id=\"00000002\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-042",
+      "description": "Kerry Moore is no longer a customer. Can you delete them from the crm?",
+      "category": "workbench",
+      "domains": [
+        "customer_relationship_manager"
+      ],
+      "gold_answer": [
+        "customer_relationship_manager.delete_customer.func(customer_id=\"00000046\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 0.5761,
+          "total_tokens": 3428,
+          "error_type": null,
+          "execution_path": [
+            "customer_relationship_manager.delete_customer.func(customer_id=\"00000002\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 2.1761,
+          "total_tokens": 3757,
+          "error_type": null,
+          "execution_path": [
+            "customer_relationship_manager.delete_customer.func(customer_id=\"00000002\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-043",
+      "description": "Reassign Rahul Martinez to Lena in the crm",
+      "category": "workbench",
+      "domains": [
+        "customer_relationship_manager"
+      ],
+      "gold_answer": [
+        "customer_relationship_manager.update_customer.func(customer_id=\"00000003\", field=\"assigned_to_email\", new_value=\"lena.schmidt@atlas.com\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 0.9789,
+          "total_tokens": 3459,
+          "error_type": null,
+          "execution_path": [
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000001\", field=\"assigned_to_email\", new_value=\"lena@example.com\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 3.9269,
+          "total_tokens": 515,
+          "error_type": null,
+          "execution_path": [],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-044",
+      "description": "Reassign all of Raj's leads that are interested in services to Sofia in the crm.",
+      "category": "workbench",
+      "domains": [
+        "customer_relationship_manager"
+      ],
+      "gold_answer": [
+        "customer_relationship_manager.update_customer.func(customer_id=\"00000154\", field=\"assigned_to_email\", new_value=\"sofia.santos@atlas.com\")",
+        "customer_relationship_manager.update_customer.func(customer_id=\"00000149\", field=\"assigned_to_email\", new_value=\"sofia.santos@atlas.com\")",
+        "customer_relationship_manager.update_customer.func(customer_id=\"00000100\", field=\"assigned_to_email\", new_value=\"sofia.santos@atlas.com\")",
+        "customer_relationship_manager.update_customer.func(customer_id=\"00000108\", field=\"assigned_to_email\", new_value=\"sofia.santos@atlas.com\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 2.7422,
+          "total_tokens": 5387,
+          "error_type": null,
+          "execution_path": [
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000001\", field=\"assigned_to_email\", new_value=\"sofia@example.com\")",
+            "customer_relationship_manager.search_customers.func(customer_name=\"Raj\", product_interest=\"Services\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 9.2671,
+          "total_tokens": 6170,
+          "error_type": null,
+          "execution_path": [
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000001\", field=\"assigned_to_email\", new_value=\"sofia@example.com\")",
+            "customer_relationship_manager.search_customers.func(customer_name=\"Raj\", product_interest=\"Services\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-045",
+      "description": "Reassign all of Nadia's leads that are interested in consulting to Raj in the crm.",
+      "category": "workbench",
+      "domains": [
+        "customer_relationship_manager"
+      ],
+      "gold_answer": [
+        "customer_relationship_manager.update_customer.func(customer_id=\"00000031\", field=\"assigned_to_email\", new_value=\"raj.patel@atlas.com\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 7.3624,
+          "total_tokens": 23606,
+          "error_type": null,
+          "execution_path": [
+            "customer_relationship_manager.update_customer.func(customer_id=\"find_email_address\", field=\"assigned_to_email\", name=\"Nadia\", new_value=\"find_email_address\")",
+            "customer_relationship_manager.search_customers.func(customer_name=\"Nadia\", product_interest=\"Consulting\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000001\", field=\"assigned_to_email\", name=\"Raj\", new_value=\"find_email_address\")",
+            "customer_relationship_manager.search_customers.func(product_interest=\"Consulting\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000189\", field=\"assigned_to_email\", name=\"Raj\", new_value=\"find_email_address\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000107\", field=\"assigned_to_email\", name=\"Raj\", new_value=\"find_email_address\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000060\", field=\"assigned_to_email\", name=\"Raj\", new_value=\"find_email_address\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000126\", field=\"assigned_to_email\", name=\"Raj\", new_value=\"find_email_address\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000142\", field=\"assigned_to_email\", name=\"Raj\", new_value=\"find_email_address\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 5.0314,
+          "total_tokens": 7594,
+          "error_type": null,
+          "execution_path": [
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000001\", field=\"assigned_to_email\", new_value=\"raj@example.com\")",
+            "customer_relationship_manager.search_customers.func(customer_name=\"Nadia\", product_interest=\"Consulting\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000002\", field=\"assigned_to_email\", new_value=\"raj@example.com\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-046",
+      "description": "Reassign all of Raj's leads that are interested in training to Akira in the crm.",
+      "category": "workbench",
+      "domains": [
+        "customer_relationship_manager"
+      ],
+      "gold_answer": [
+        "customer_relationship_manager.update_customer.func(customer_id=\"00000194\", field=\"assigned_to_email\", new_value=\"akira.sato@atlas.com\")",
+        "customer_relationship_manager.update_customer.func(customer_id=\"00000129\", field=\"assigned_to_email\", new_value=\"akira.sato@atlas.com\")",
+        "customer_relationship_manager.update_customer.func(customer_id=\"00000062\", field=\"assigned_to_email\", new_value=\"akira.sato@atlas.com\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 5.4007,
+          "total_tokens": 16474,
+          "error_type": null,
+          "execution_path": [
+            "customer_relationship_manager.update_customer.func(customer_id=\"find_email_address\", field=\"assigned_to_email\", name=\"Akira\", new_value=\"find_email_address\")",
+            "customer_relationship_manager.search_customers.func(product_interest=\"Training\", status=\"Lead\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000194\", field=\"assigned_to_email\", name=\"Akira\", new_value=\"find_email_address\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000129\", field=\"assigned_to_email\", name=\"Akira\", new_value=\"find_email_address\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000062\", field=\"assigned_to_email\", name=\"Akira\", new_value=\"find_email_address\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000116\", field=\"assigned_to_email\", name=\"Akira\", new_value=\"find_email_address\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 4.6174,
+          "total_tokens": 5770,
+          "error_type": null,
+          "execution_path": [
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000001\", field=\"assigned_to_email\", new_value=\"akira@example.com\")",
+            "customer_relationship_manager.search_customers.func(customer_name=\"Raj\", product_interest=\"Training\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-047",
+      "description": "Sofia is taking over all of Lena's customers that are interested in services and are either qualified or in proposal. Can you reassign them in the crm?",
+      "category": "workbench",
+      "domains": [
+        "customer_relationship_manager"
+      ],
+      "gold_answer": [
+        "customer_relationship_manager.update_customer.func(customer_id=\"00000016\", field=\"assigned_to_email\", new_value=\"sofia.santos@atlas.com\")",
+        "customer_relationship_manager.update_customer.func(customer_id=\"00000056\", field=\"assigned_to_email\", new_value=\"sofia.santos@atlas.com\")",
+        "customer_relationship_manager.update_customer.func(customer_id=\"00000190\", field=\"assigned_to_email\", new_value=\"sofia.santos@atlas.com\")",
+        "customer_relationship_manager.update_customer.func(customer_id=\"00000059\", field=\"assigned_to_email\", new_value=\"sofia.santos@atlas.com\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 7.5236,
+          "total_tokens": 24482,
+          "error_type": null,
+          "execution_path": [
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000001\", field=\"assigned_to_email\", new_value=\"sofia@example.com\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000002\", field=\"assigned_to_email\", new_value=\"sofia@example.com\")",
+            "customer_relationship_manager.search_customers.func(product_interest=\"Services\", status=\"Qualified\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000106\", field=\"assigned_to_email\", new_value=\"sofia@example.com\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000016\", field=\"assigned_to_email\", new_value=\"sofia@example.com\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000099\", field=\"assigned_to_email\", new_value=\"sofia@example.com\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000084\", field=\"assigned_to_email\", new_value=\"sofia@example.com\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000190\", field=\"assigned_to_email\", new_value=\"sofia@example.com\")",
+            "customer_relationship_manager.search_customers.func(product_interest=\"Services\", status=\"Proposal\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000197\", field=\"assigned_to_email\", new_value=\"sofia@example.com\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 8.8813,
+          "total_tokens": 16691,
+          "error_type": null,
+          "execution_path": [
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000001\", field=\"assigned_to_email\", new_value=\"sofia@example.com\")",
+            "customer_relationship_manager.search_customers.func(product_interest=\"Services\", status=\"Qualified\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000106\", field=\"assigned_to_email\", new_value=\"sofia@example.com\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000016\", field=\"assigned_to_email\", new_value=\"sofia@example.com\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000099\", field=\"assigned_to_email\", new_value=\"sofia@example.com\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000084\", field=\"assigned_to_email\", new_value=\"sofia@example.com\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000190\", field=\"assigned_to_email\", new_value=\"sofia@example.com\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-048",
+      "description": "I need to move all of Raj's customers that are in the qualified stage and interested in services to lost. Can you make that change in the crm?",
+      "category": "workbench",
+      "domains": [
+        "customer_relationship_manager"
+      ],
+      "gold_answer": [
+        "customer_relationship_manager.delete_customer.func(customer_id=\"00000106\")",
+        "customer_relationship_manager.delete_customer.func(customer_id=\"00000196\")"
+      ],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 4.9425,
+          "total_tokens": 15266,
+          "error_type": null,
+          "execution_path": [
+            "customer_relationship_manager.update_customer.func(customer_id=\"Raj\", field=\"status\", new_value=\"Lost\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"Raj\", field=\"product_interest\", new_value=\"Services\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"Raj\", field=\"status\", new_value=\"Lost\")",
+            "customer_relationship_manager.search_customers.func(customer_name=\"Raj\", product_interest=\"Services\", status=\"Qualified\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000001\", field=\"status\", new_value=\"Lost\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000002\", field=\"status\", new_value=\"Lost\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000003\", field=\"status\", new_value=\"Lost\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 10.8213,
+          "total_tokens": 15959,
+          "error_type": null,
+          "execution_path": [
+            "customer_relationship_manager.update_customer.func(customer_id=\"Raj\", field=\"status\", new_value=\"Lost\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"Raj\", field=\"product_interest\", new_value=\"Services\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"Raj\", field=\"status\", new_value=\"Lost\")",
+            "customer_relationship_manager.search_customers.func(customer_name=\"Raj\", product_interest=\"Services\", status=\"Qualified\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000001\", field=\"status\", new_value=\"Lost\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000002\", field=\"status\", new_value=\"Lost\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000003\", field=\"status\", new_value=\"Lost\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    },
+    {
+      "task_id": "WB-049",
+      "description": "Move all customers that haven't responded to a proposal for the consulting product in 5 weeks to lost in the crm",
+      "category": "workbench",
+      "domains": [
+        "customer_relationship_manager"
+      ],
+      "gold_answer": [],
+      "router_prediction": "Decentralized MAS",
+      "results": [
+        {
+          "architecture": "Single-Agent System",
+          "accuracy_score": 0.0,
+          "latency_sec": 4.7515,
+          "total_tokens": 11916,
+          "error_type": null,
+          "execution_path": [
+            "customer_relationship_manager.search_customers.func(follow_up_by_max=\"2023-12-07\", follow_up_by_min=\"2023-11-30\", product_interest=\"Consulting\", status=\"Proposal\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000101\", field=\"status\", new_value=\"Lost\")",
+            "customer_relationship_manager.search_customers.func(follow_up_by_max=\"2023-12-07\", follow_up_by_min=\"2023-11-30\", product_interest=\"Consulting\", status=\"Proposal\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000102\", field=\"status\", new_value=\"Lost\")",
+            "customer_relationship_manager.search_customers.func(follow_up_by_max=\"2023-12-07\", follow_up_by_min=\"2023-11-30\", product_interest=\"Consulting\", status=\"Proposal\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        },
+        {
+          "architecture": "Centralized MAS",
+          "accuracy_score": 0.0,
+          "latency_sec": 8.8095,
+          "total_tokens": 7941,
+          "error_type": null,
+          "execution_path": [
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000001\", field=\"status\", new_value=\"Lost\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000002\", field=\"status\", new_value=\"Lost\")",
+            "customer_relationship_manager.update_customer.func(customer_id=\"00000003\", field=\"status\", new_value=\"Lost\")"
+          ],
+          "grading": {
+            "outcome_match": false,
+            "exact_side_effect_match": false
+          }
+        }
+      ]
+    }
+  ]
+}

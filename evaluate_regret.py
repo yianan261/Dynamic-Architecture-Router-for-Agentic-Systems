@@ -66,9 +66,9 @@ class RegretEvaluator:
 
     def __init__(
         self,
-        accuracy_weight: float = 0.6,
-        latency_weight: float = 0.25,
-        token_weight: float = 0.15,
+        accuracy_weight: float = 0.50,
+        latency_weight: float = 0.40,
+        token_weight: float = 0.10,
     ):
         self.accuracy_weight = accuracy_weight
         self.latency_weight = latency_weight

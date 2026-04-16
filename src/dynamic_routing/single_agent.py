@@ -12,7 +12,7 @@ import os
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from dynamic_routing.chat_models import get_worker_chat_model
+from dynamic_routing.chat_models import bind_tools_safely, get_worker_chat_model
 from dynamic_routing.state import SingleAgentState
 
 # ---------------------------------------------------------------------------
@@ -50,9 +50,7 @@ def _build_llm_sas_graph() -> CompiledStateGraph[
 
     from dynamic_routing.agent_tools import LLM_TOOL_TO_SAS_CALL, PCAB_TOOLS
 
-    worker_llm = get_worker_chat_model(temperature=0.1).bind_tools(
-        PCAB_TOOLS, parallel_tool_calls=False
-    )
+    worker_llm = bind_tools_safely(get_worker_chat_model(temperature=0.1), PCAB_TOOLS)
 
     react_agent = create_react_agent(
         worker_llm,

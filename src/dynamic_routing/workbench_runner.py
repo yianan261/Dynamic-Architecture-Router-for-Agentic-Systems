@@ -21,13 +21,18 @@ Design notes (motivated by WorkBench paper + "Science of Scaling" SAS baseline):
 
 from __future__ import annotations
 
+import inspect
 import logging
+import os
 import re
 import time
 from typing import Any
 
+from langchain_core.tools import StructuredTool
 from langgraph.graph import END, StateGraph
-from dynamic_routing.chat_models import get_worker_chat_model, llm_backend
+from pydantic import Field, create_model
+
+from dynamic_routing.chat_models import bind_tools_safely, get_worker_chat_model, llm_backend
 from dynamic_routing.state import CentralizedState
 from dynamic_routing.workbench_env import (
     get_tools_for_domains,
@@ -40,6 +45,79 @@ MAX_CMAS_SUPERVISOR_TURNS = 20
 MAX_WORKER_REACT = 30
 LOOP_SCORE_THRESHOLD = 0.5
 
+# ---------------------------------------------------------------------------
+# Rate-limit / quota handling for hosted APIs (Gemini free-tier TPM, etc.)
+# ---------------------------------------------------------------------------
+#
+# LangChain's internal retry only fires while the HTTP call is in flight; once
+# the exception bubbles out of the chat model (inside a LangGraph ReAct loop or
+# our supervisor dispatch), we need an outer wrapper that sleeps and retries
+# for *that entire invocation*. This is the "bulletproof fix" requested: if we
+# see a 429 / RESOURCE_EXHAUSTED / quota / rate-limit marker in the error
+# string, sleep for 60s (exponentially increasing) and retry up to
+# ``RATE_LIMIT_MAX_RETRIES`` times.
+RATE_LIMIT_MARKERS = (
+    "429",
+    "resource_exhausted",
+    "quota",
+    "rate limit",
+    "rate_limit",
+    "too many requests",
+)
+
+
+def _default_rate_limit_retries() -> int:
+    try:
+        return max(0, int(os.environ.get("RATE_LIMIT_MAX_RETRIES", "3")))
+    except ValueError:
+        return 3
+
+
+def _default_rate_limit_sleep() -> float:
+    try:
+        return max(1.0, float(os.environ.get("RATE_LIMIT_SLEEP_SEC", "60")))
+    except ValueError:
+        return 60.0
+
+
+def _is_rate_limit_error(exc: BaseException) -> bool:
+    msg = str(exc).lower()
+    return any(marker in msg for marker in RATE_LIMIT_MARKERS)
+
+
+def _invoke_with_rate_limit_retry(fn: Any, *args: Any, **kwargs: Any) -> Any:
+    """Call ``fn(*args, **kwargs)``; on quota errors, back off and retry.
+
+    The first retry waits ``RATE_LIMIT_SLEEP_SEC`` (default 60s), and each
+    subsequent retry doubles that interval so we don't hammer the API if the
+    quota window is wider than one minute. Only re-raises after exhausting
+    ``RATE_LIMIT_MAX_RETRIES`` retries, or immediately for non-quota errors so
+    the benchmark loop can record a proper ``error`` / ``failure_taxonomy``.
+    """
+    retries = _default_rate_limit_retries()
+    base_sleep = _default_rate_limit_sleep()
+    last_exc: BaseException | None = None
+    for attempt in range(retries + 1):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:  # noqa: BLE001 — we classify below
+            if not _is_rate_limit_error(e):
+                raise
+            last_exc = e
+            if attempt >= retries:
+                break
+            sleep_s = base_sleep * (2**attempt)
+            logging.warning(
+                "Rate-limit hit (attempt %d/%d): %s — sleeping %.0fs before retry",
+                attempt + 1,
+                retries,
+                str(e)[:140],
+                sleep_s,
+            )
+            time.sleep(sleep_s)
+    assert last_exc is not None
+    raise last_exc
+
 _WB_TOOL_SAFE_TO_CANONICAL: dict[str, str] = {}
 
 
@@ -51,16 +129,72 @@ def _clear_wb_tool_name_remap() -> None:
     _WB_TOOL_SAFE_TO_CANONICAL.clear()
 
 
+def _build_string_args_schema(tool_name: str, func: Any) -> type:
+    """Build a Pydantic model where every parameter is a plain ``str``.
+
+    WorkBench tools are declared without type annotations (``def send_email(
+    recipient=None, subject=None, body=None)``), so LangChain's auto-inferred
+    args_schema has properties with no ``type`` field. OpenAI's function-calling
+    converter tolerates this, but ``langchain-google-genai`` rejects it with
+    ``3 validation errors for Schema: properties.recipient ... Input should be
+    a valid dictionary or object``.
+
+    We type every param as ``str`` (not ``Optional[str]``) because Gemini's
+    function-calling schema does not accept nullable / anyOf types. The default
+    is the empty string rather than ``None`` so that if Gemini does emit an
+    unused argument, WorkBench's ``if not x`` guards still treat it as "not
+    provided". This also avoids crashes in pandas-backed tools like
+    ``calendar.search_events`` which calls ``.str.contains(query)`` — passing
+    ``None`` raises ``TypeError: first argument must be string or compiled
+    pattern``.
+    """
+    sig = inspect.signature(func)
+    fields: dict[str, tuple[Any, Any]] = {}
+    for pname in sig.parameters:
+        fields[pname] = (str, Field(default="", description=f"{pname} (optional)"))
+    model_name = re.sub(r"\W+", "_", tool_name) + "_Args"
+    return create_model(model_name, **fields)  # type: ignore[call-overload]
+
+
+def _retype_tool_for_google(t: Any, new_name: str | None = None) -> Any:
+    """Rebuild a StructuredTool with an explicit string-typed args_schema."""
+    func = getattr(t, "func", None)
+    if func is None:
+        # Fallback: we can't inspect; return best-effort name-renamed copy.
+        return t.model_copy(update={"name": new_name}) if new_name else t
+    schema = _build_string_args_schema(t.name, func)
+    return StructuredTool.from_function(
+        func=func,
+        name=new_name or t.name,
+        description=t.description,
+        args_schema=schema,
+    )
+
+
 def _prepare_tools_for_hosted_api(tools: list[Any]) -> list[Any]:
-    """Copy tools with dot-free names for hosted LLM APIs; fill remap for grading strings."""
+    """Copy tools with dot-free names for hosted LLM APIs; fill remap for grading strings.
+
+    For the Google backend we also rebuild each tool with an explicit Pydantic
+    args_schema (all params typed as Optional[str]), because WorkBench's
+    un-annotated ``@tool`` functions otherwise produce a malformed Gemini
+    Schema and every tool call fails with a validation error.
+    """
     if not _hosted_api_needs_safe_tool_names():
         return tools
+    backend = llm_backend()
     out: list[Any] = []
     for t in tools:
         name = t.name
+        safe: str | None
         if "." in name:
-            safe = name.replace(".", "_")
-            _WB_TOOL_SAFE_TO_CANONICAL[safe] = name
+            safe_str = name.replace(".", "_")
+            _WB_TOOL_SAFE_TO_CANONICAL[safe_str] = name
+            safe = safe_str
+        else:
+            safe = None
+        if backend == "google":
+            out.append(_retype_tool_for_google(t, new_name=safe))
+        elif safe is not None:
             out.append(t.model_copy(update={"name": safe}))
         else:
             out.append(t)
@@ -165,13 +299,14 @@ def run_workbench_sas(task: str, tools: list) -> dict[str, Any]:
     _clear_wb_tool_name_remap()
     tools = _prepare_tools_for_hosted_api(tools)
 
-    llm = _worker_llm().bind_tools(tools, parallel_tool_calls=False)
+    llm = bind_tools_safely(_worker_llm(), tools)
     agent = create_react_agent(llm, tools, prompt=_sas_system_prompt())
 
     err = ""
     t0 = time.perf_counter()
     try:
-        result = agent.invoke(
+        result = _invoke_with_rate_limit_retry(
+            agent.invoke,
             {"messages": [("user", task)]},
             config={"recursion_limit": MAX_REACT_ITERATIONS},
         )
@@ -281,7 +416,7 @@ def build_workbench_cmas_graph(domains: list[str], collected_calls: list[str]):
     worker_reacts: dict[str, Any] = {}
     for node_name, worker_prompt, dlist in active:
         wt = _prepare_tools_for_hosted_api(get_tools_for_domains(dlist))
-        llm_w = base_llm.bind_tools(wt, parallel_tool_calls=False)
+        llm_w = bind_tools_safely(base_llm, wt)
         worker_reacts[node_name] = create_react_agent(
             llm_w,
             wt,
@@ -291,7 +426,8 @@ def build_workbench_cmas_graph(domains: list[str], collected_calls: list[str]):
     def _run_worker(node_name: str, task: str, tag: str) -> dict:
         react = worker_reacts[node_name]
         try:
-            result = react.invoke(
+            result = _invoke_with_rate_limit_retry(
+                react.invoke,
                 {"messages": [("user", task)]},
                 config={"recursion_limit": MAX_WORKER_REACT},
             )
@@ -381,7 +517,7 @@ def build_workbench_cmas_graph(domains: list[str], collected_calls: list[str]):
 
         if not avail:
             prompt = f"Task: {task}\n\nAggregated Data:\n{context}\n\nSynthesize a clear final answer."
-            response = base_llm.invoke(prompt)
+            response = _invoke_with_rate_limit_retry(base_llm.invoke, prompt)
             return {
                 "next_action": "FINISH",
                 "final_synthesis": _message_content_as_str(response.content),
@@ -401,15 +537,16 @@ def build_workbench_cmas_graph(domains: list[str], collected_calls: list[str]):
             + ", ".join(avail_names + ["FINISH"])
             + ">"
         )
-        response = base_llm.invoke(dispatch_prompt)
+        response = _invoke_with_rate_limit_retry(base_llm.invoke, dispatch_prompt)
         tokens = _tokens_from_message(response)
         text = _message_content_as_str(response.content)
 
         chosen = _parse_action_line(text, avail_names)
 
         if chosen == "FINISH" or chosen is None:
-            synth = base_llm.invoke(
-                f"Task: {task}\n\nAggregated Data:\n{context}\n\nSynthesize a clear final answer."
+            synth = _invoke_with_rate_limit_retry(
+                base_llm.invoke,
+                f"Task: {task}\n\nAggregated Data:\n{context}\n\nSynthesize a clear final answer.",
             )
             return {
                 "next_action": "FINISH",

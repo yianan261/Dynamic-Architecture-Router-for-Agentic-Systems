@@ -13,7 +13,7 @@ import os
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from dynamic_routing.chat_models import get_worker_chat_model
+from dynamic_routing.chat_models import bind_tools_safely, get_worker_chat_model
 from dynamic_routing.state import CentralizedState
 
 
@@ -49,10 +49,10 @@ def _build_llm_cmas_graph() -> CompiledStateGraph[
 
     base_llm = get_worker_chat_model(temperature=0.1)
 
-    cal_react = create_react_agent(base_llm.bind_tools([calendar_tool], parallel_tool_calls=False), [calendar_tool], prompt="You are a Calendar Agent. Fetch events and return a concise summary.")
-    drv_react = create_react_agent(base_llm.bind_tools([drive_tool], parallel_tool_calls=False), [drive_tool], prompt="You are a Drive Agent. Search notes and summarize.")
-    com_react = create_react_agent(base_llm.bind_tools([commute_tool], parallel_tool_calls=False), [commute_tool], prompt="You are a Commute Agent. Estimate travel times.")
-    con_react = create_react_agent(base_llm.bind_tools([contact_tool], parallel_tool_calls=False), [contact_tool], prompt="You are a Contacts Agent. Get meeting preferences.")
+    cal_react = create_react_agent(bind_tools_safely(base_llm, [calendar_tool]), [calendar_tool], prompt="You are a Calendar Agent. Fetch events and return a concise summary.")
+    drv_react = create_react_agent(bind_tools_safely(base_llm, [drive_tool]), [drive_tool], prompt="You are a Drive Agent. Search notes and summarize.")
+    com_react = create_react_agent(bind_tools_safely(base_llm, [commute_tool]), [commute_tool], prompt="You are a Commute Agent. Estimate travel times.")
+    con_react = create_react_agent(bind_tools_safely(base_llm, [contact_tool]), [contact_tool], prompt="You are a Contacts Agent. Get meeting preferences.")
 
     def _run_llm_worker(react_agent, task: str, prefix: str) -> dict:
         try:
