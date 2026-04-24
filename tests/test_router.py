@@ -35,6 +35,7 @@ def test_routes_open_ended_to_decentralized_mas() -> None:
         "user_query": "What are the pros and cons of different approaches?"
     })
     assert result["selected_architecture"] == "Decentralized MAS"
+    assert "dmas" in result["final_response"].lower() or "consensus" in result["final_response"].lower()
 
 
 def test_centralized_mas_aggregates_pcab_sources() -> None:

@@ -3,6 +3,8 @@
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from evaluate_regret import ExecutionResult, RegretEvaluator, compute_trajectory_accuracy
@@ -61,3 +63,19 @@ def test_trajectory_accuracy_empty_required() -> None:
     """No required tools -> 1.0 (vacuous success)."""
     acc = compute_trajectory_accuracy(required_tools=[], executed_tools=[])
     assert acc == 1.0
+
+
+def test_regret_evaluator_three_architectures_oracle() -> None:
+    """Oracle picks best among SAS, CMAS, and DMAS (composite reward)."""
+    evaluator = RegretEvaluator(accuracy_weight=0.5, latency_weight=0.4, token_weight=0.1)
+    results = [
+        ExecutionResult("Single-Agent System", 0.7, 20.0, 5000),
+        ExecutionResult("Centralized MAS", 0.9, 6.0, 1500),
+        ExecutionResult("Decentralized MAS", 0.75, 10.0, 3000),
+    ]
+    oracle = evaluator.determine_oracle(results)
+    assert oracle.architecture == "Centralized MAS"
+    m = evaluator.calculate_regret("Single-Agent System", results)
+    assert m["oracle_baseline"] == "Centralized MAS"
+    assert m["perfect_routing"] is False
+    assert m["accuracy_regret"] == pytest.approx(0.2)
