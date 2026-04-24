@@ -1,0 +1,3 @@
+{"query_id": "BC-FIX-001", "query": "What was the reported annual revenue for Acme Corp in 2023?", "gold_answer": "120 million USD"}
+{"query_id": "BC-FIX-002", "query": "Who became CEO of Acme Corp after the 2022 merger?", "gold_answer": "Jane Rivera"}
+{"query_id": "BC-FIX-003", "query": "In which city is Acme Corp headquarters located?", "gold_answer": "Austin"}
