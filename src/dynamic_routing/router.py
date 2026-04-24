@@ -9,8 +9,10 @@ from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
 from dynamic_routing.centralized_mas import centralized_mas_app
+from dynamic_routing.decentralized_mas import decentralized_mas_app
 from dynamic_routing.single_agent import single_agent_app
 from dynamic_routing.state import CentralizedState, RouterState, SingleAgentState
+from dynamic_routing.router_policy import learned_route_destination
 from dynamic_routing.vllm_integration import predict_routing_metadata
 
 
@@ -35,12 +37,15 @@ def route_task(
     Applies quantitative scaling thresholds from the literature:
     - Tool-coordination trade-off (β=-0.267): tool-heavy → SAS
     - Parallelization benefit: decomposable tasks → Centralized MAS
-    - Exploratory / open-ended tasks → Decentralized MAS (placeholder today)
+    - Exploratory / open-ended tasks → Decentralized MAS (parallel peers + merge)
 
-    Note: Decentralized MAS is an unimplemented placeholder, so the default
-    must NOT be DMAS (it would guarantee 0 accuracy). Default is SAS, which
-    is also the Science-of-Scaling matched-compute baseline.
+    Default remains SAS when parallelism is moderate so PCAB-style tasks hit
+    matched-compute baselines unless the query profile is clearly peer-parallel.
     """
+    learned = learned_route_destination(state)
+    if learned is not None:
+        return learned
+
     tools = state.get("estimated_tool_count", 0)
     depth = state.get("estimated_sequential_depth", 0)
     parallelism = state.get("parallelization_factor", 0.0)
@@ -48,11 +53,12 @@ def route_task(
     if tools >= 12 or depth > 5:
         return "single_agent_node"
 
+    # Very high parallelization: decentralized peers + merge (before CMAS band)
+    if parallelism > 0.85 and tools < 12:
+        return "decentralized_mas_node"
+
     if parallelism > 0.6 and tools < 12:
         return "centralized_mas_node"
-
-    if parallelism > 0.85:
-        return "decentralized_mas_node"
 
     return "single_agent_node"
 
@@ -66,7 +72,8 @@ _ROUTE_TO_DISPLAY: dict[str, str] = {
 
 def predict_routed_architecture(user_query: str) -> str:
     """
-    Routing-only: metadata + thresholds → display name (does not execute SAS/CMAS).
+    Routing-only: metadata + optional learned policy + thresholds → display name
+    (does not execute SAS/CMAS/DMAS).
     Used to populate router_prediction in benchmark JSON.
     """
     base: RouterState = {"user_query": user_query}
@@ -145,10 +152,37 @@ def centralized_mas_node(state: RouterState) -> dict:
 
 
 def decentralized_mas_node(state: RouterState) -> dict:
-    """Decentralized MAS: peer-to-peer consensus (placeholder)."""
+    """Decentralized MAS: parallel specialist peers + single consensus merge."""
+    task = state.get("user_query", "")
+    extras: dict = {}
+    extraction_overrides = state.get("extraction_overrides")
+    if extraction_overrides:
+        extras["extraction_overrides"] = extraction_overrides
+    required_tools = state.get("required_tools")
+    if required_tools:
+        extras["required_tools"] = required_tools
+
+    mas_result = decentralized_mas_app.invoke(
+        cast(
+            CentralizedState,
+            {
+                "task": task,
+                "aggregated_context": [],
+                "next_action": "",
+                "final_synthesis": "",
+                "total_tokens": 0,
+                **extras,
+            },
+        )
+    )
+
     return {
         "selected_architecture": "Decentralized MAS",
-        "final_response": "Executed via peer-to-peer consensus.",
+        "final_response": mas_result.get(
+            "final_synthesis",
+            "Decentralized MAS execution complete.",
+        ),
+        "total_tokens": mas_result.get("total_tokens", 0),
     }
 
 

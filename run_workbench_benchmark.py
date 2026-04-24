@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-WorkBench 50-task sweep: SAS vs CMAS using WorkBench sandbox tools and Llama (vLLM).
+WorkBench 50-task sweep: SAS, CMAS, and DMAS using WorkBench sandbox tools and Llama (vLLM).
 
 Reads benchmarks/workbench_50_queries.csv, runs each architecture on fresh DB state,
 grades with outcome-centric equality (same idea as WorkBench is_correct).
@@ -49,7 +49,11 @@ from dynamic_routing.workbench_env import (  # noqa: E402
     workbench_root,
 )
 from dynamic_routing.workbench_grade import workbench_accuracy_score  # noqa: E402
-from dynamic_routing.workbench_runner import run_workbench_cmas, run_workbench_sas  # noqa: E402
+from dynamic_routing.workbench_runner import (  # noqa: E402
+    run_workbench_cmas,
+    run_workbench_dmas,
+    run_workbench_sas,
+)
 
 
 def _resolve_run_identity() -> dict[str, str]:
@@ -106,7 +110,7 @@ def _require_workbench() -> None:
 
 
 def _write_flat_table_csv(path: Path, task_results: list[dict]) -> None:
-    """One row per task; flat columns for SAS vs CMAS (for LaTeX/Excel)."""
+    """One row per task; flat columns for SAS vs CMAS vs DMAS (for LaTeX/Excel)."""
     fieldnames = [
         "task_id",
         "description",
@@ -125,6 +129,13 @@ def _write_flat_table_csv(path: Path, task_results: list[dict]) -> None:
         "cmas_outcome_match",
         "cmas_exact_side_effect_match",
         "cmas_error",
+        "dmas_accuracy",
+        "dmas_latency_sec",
+        "dmas_total_tokens",
+        "dmas_num_tool_calls",
+        "dmas_outcome_match",
+        "dmas_exact_side_effect_match",
+        "dmas_error",
     ]
     with path.open("w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fieldnames)
@@ -133,8 +144,10 @@ def _write_flat_table_csv(path: Path, task_results: list[dict]) -> None:
             r = {x["architecture"]: x for x in item.get("results", [])}
             sas = r.get("Single-Agent System", {})
             cmas = r.get("Centralized MAS", {})
+            dmas = r.get("Decentralized MAS", {})
             sg = sas.get("grading") or {}
             cg = cmas.get("grading") or {}
+            dg = dmas.get("grading") or {}
             dom = item.get("domains", [])
             dom_s = json.dumps(dom) if not isinstance(dom, str) else dom
             w.writerow({
@@ -155,6 +168,13 @@ def _write_flat_table_csv(path: Path, task_results: list[dict]) -> None:
                 "cmas_outcome_match": cg.get("outcome_match", ""),
                 "cmas_exact_side_effect_match": cg.get("exact_side_effect_match", ""),
                 "cmas_error": cmas.get("error_type") or "",
+                "dmas_accuracy": dmas.get("accuracy_score", ""),
+                "dmas_latency_sec": dmas.get("latency_sec", ""),
+                "dmas_total_tokens": dmas.get("total_tokens", ""),
+                "dmas_num_tool_calls": len(dmas.get("execution_path") or []),
+                "dmas_outcome_match": dg.get("outcome_match", ""),
+                "dmas_exact_side_effect_match": dg.get("exact_side_effect_match", ""),
+                "dmas_error": dmas.get("error_type") or "",
             })
 
 
@@ -181,7 +201,7 @@ def _require_llm_env() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="WorkBench SAS vs CMAS benchmark sweep")
+    parser = argparse.ArgumentParser(description="WorkBench SAS vs CMAS vs DMAS benchmark sweep")
     parser.add_argument(
         "csv_path",
         nargs="?",
@@ -279,9 +299,27 @@ def main() -> None:
             f"lat={cmas['latency_sec']:.3f}s tok={cmas_tok} calls={len(cmas['function_calls'])}"
         )
 
+        dmas = run_workbench_dmas(q, domains)
+        dmas_err = (dmas.get("error") or "").strip()
+        dmas_score, dmas_outcome, dmas_exact = workbench_accuracy_score(
+            dmas["function_calls"], gold, dmas_err
+        )
+        dmas_tok = dmas["total_tokens"] or (len(dmas["function_calls"]) * 400 + 800)
+        dmas_tax = dmas.get("failure_taxonomy")
+        if dmas_err:
+            print(f"  DMAS  | ERROR: {dmas_err[:120]}")
+        if dmas_tax:
+            print(f"  DMAS  | TAXONOMY: {dmas_tax}")
+        print(
+            f"  DMAS  | acc={dmas_score:.2f} outcome={dmas_outcome} exact={dmas_exact} "
+            f"lat={dmas['latency_sec']:.3f}s tok={dmas_tok} calls={len(dmas['function_calls'])}"
+        )
+
         err_sas = sas["error"][:200] if sas["error"] else None
         _cmas_msg = (cmas_err or tax or "").strip()
         err_cmas = _cmas_msg[:200] if _cmas_msg else None
+        _dmas_msg = (dmas_err or (dmas_tax or "")).strip()
+        err_dmas = _dmas_msg[:200] if _dmas_msg else None
 
         task_results.append({
             "task_id": tid,
@@ -308,6 +346,15 @@ def main() -> None:
                     "error_type": err_cmas,
                     "execution_path": cmas["function_calls"],
                     "grading": {"outcome_match": cmas_outcome, "exact_side_effect_match": cmas_exact},
+                },
+                {
+                    "architecture": "Decentralized MAS",
+                    "accuracy_score": round(dmas_score, 2),
+                    "latency_sec": round(dmas["latency_sec"], 4),
+                    "total_tokens": int(dmas_tok),
+                    "error_type": err_dmas,
+                    "execution_path": dmas["function_calls"],
+                    "grading": {"outcome_match": dmas_outcome, "exact_side_effect_match": dmas_exact},
                 },
             ],
         })
