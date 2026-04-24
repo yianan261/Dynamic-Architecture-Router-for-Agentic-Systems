@@ -46,16 +46,16 @@ def _build_llm_sas_graph() -> CompiledStateGraph[
     SingleAgentState, None, SingleAgentState, SingleAgentState
 ]:
     """Build SAS graph powered by Llama-3.1 ReAct agent."""
-    from langgraph.prebuilt import create_react_agent
+    from langchain.agents import create_agent
 
     from dynamic_routing.agent_tools import LLM_TOOL_TO_SAS_CALL, PCAB_TOOLS
 
     worker_llm = bind_tools_safely(get_worker_chat_model(temperature=0.1), PCAB_TOOLS)
 
-    react_agent = create_react_agent(
-        worker_llm,
-        PCAB_TOOLS,
-        prompt="You are an efficient personal assistant. Use your tools to fetch data and solve the user's task.",
+    react_agent = create_agent(
+        model=worker_llm,
+        tools=PCAB_TOOLS,
+        system_prompt="You are an efficient personal assistant. Use your tools to fetch data and solve the user's task.",
     )
 
     def sas_llm_node(state: SingleAgentState) -> dict:

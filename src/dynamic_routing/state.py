@@ -4,6 +4,7 @@ State schemas for the Dynamic Architecture Router and sub-topologies.
 
 import operator
 from typing import Annotated, TypedDict
+from typing_extensions import NotRequired
 
 
 class RouterState(TypedDict, total=False):
@@ -13,6 +14,18 @@ class RouterState(TypedDict, total=False):
     estimated_sequential_depth: int
     parallelization_factor: float  # Scale of 0.0 to 1.0
     estimated_tool_count: int
+    # Optional structured features for learned routing (see vllm_integration.RoutingMetadata)
+    num_subgoals: NotRequired[int]
+    entity_count: NotRequired[int]
+    constraint_tightness: NotRequired[int]
+    open_endedness: NotRequired[int]
+    aggregation_required: NotRequired[bool]
+    expected_retrieval_fanout: NotRequired[int]
+    domain_span: NotRequired[int]
+    expected_context_expansion: NotRequired[int]
+    final_synthesis_complexity: NotRequired[int]
+    cross_branch_dependency: NotRequired[int]
+    communication_load_estimate: NotRequired[int]
     selected_architecture: str
     final_response: str
     extraction_overrides: dict

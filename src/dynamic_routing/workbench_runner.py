@@ -1,5 +1,5 @@
 """
-Run Single-Agent and Centralized MAS on WorkBench tools + sandbox.
+Run Single-Agent, Centralized MAS, and Decentralized MAS on WorkBench tools + sandbox.
 
 Uses LangGraph create_react_agent with WorkBench LangChain tools. Grading is
 outcome-centric (DataFrame equality after executing predicted vs gold calls).
@@ -293,14 +293,14 @@ def _final_text(messages: list[Any]) -> str:
 
 def run_workbench_sas(task: str, tools: list) -> dict[str, Any]:
     """Single ReAct agent with full tool set for this task's domains."""
-    from langgraph.prebuilt import create_react_agent
+    from langchain.agents import create_agent
 
     reset_workbench_state()
     _clear_wb_tool_name_remap()
     tools = _prepare_tools_for_hosted_api(tools)
 
     llm = bind_tools_safely(_worker_llm(), tools)
-    agent = create_react_agent(llm, tools, prompt=_sas_system_prompt())
+    agent = create_agent(model=llm, tools=tools, system_prompt=_sas_system_prompt())
 
     err = ""
     t0 = time.perf_counter()
@@ -407,7 +407,7 @@ def _parse_action_line(text: str, candidates: list[str]) -> str | None:
 
 def build_workbench_cmas_graph(domains: list[str], collected_calls: list[str]):
     """Hub-and-spoke graph; appends each worker's tool calls to collected_calls."""
-    from langgraph.prebuilt import create_react_agent
+    from langchain.agents import create_agent
 
     active = _active_worker_specs(domains)
     base_llm = _worker_llm()
@@ -417,10 +417,10 @@ def build_workbench_cmas_graph(domains: list[str], collected_calls: list[str]):
     for node_name, worker_prompt, dlist in active:
         wt = _prepare_tools_for_hosted_api(get_tools_for_domains(dlist))
         llm_w = bind_tools_safely(base_llm, wt)
-        worker_reacts[node_name] = create_react_agent(
-            llm_w,
-            wt,
-            prompt=_worker_system_prompt(worker_prompt),
+        worker_reacts[node_name] = create_agent(
+            model=llm_w,
+            tools=wt,
+            system_prompt=_worker_system_prompt(worker_prompt),
         )
 
     def _run_worker(node_name: str, task: str, tag: str) -> dict:
@@ -625,4 +625,81 @@ def run_workbench_cmas(task: str, domains: list[str]) -> dict[str, Any]:
         "final_response": result.get("final_synthesis") or "",
         "execution_path": result.get("execution_path") or [],
         "failure_taxonomy": tax,
+    }
+
+
+def _wb_message_content_str(content: object) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return " ".join(str(c) for c in content)
+    return str(content) if content is not None else ""
+
+
+def run_workbench_dmas(task: str, domains: list[str]) -> dict[str, Any]:
+    """Decentralized MAS on WorkBench: each specialist runs the full task in fixed
+    peer order on one shared sandbox (sequential to avoid tool races), then one
+    LLM consensus merge. No supervisor re-planning between workers."""
+    from langchain.agents import create_agent
+
+    reset_workbench_state()
+    _clear_wb_tool_name_remap()
+    active = _active_worker_specs(domains)
+    base_llm = _worker_llm()
+    collected: list[str] = []
+    contexts: list[str] = []
+    total_tokens = 0
+    failure_tax = ""
+
+    t0 = time.perf_counter()
+    err = ""
+
+    for node_name, worker_prompt, dlist in active:
+        wt = _prepare_tools_for_hosted_api(get_tools_for_domains(dlist))
+        llm_w = bind_tools_safely(base_llm, wt)
+        react = create_agent(
+            model=llm_w,
+            tools=wt,
+            system_prompt=_worker_system_prompt(worker_prompt),
+        )
+        tag = _tag_for_worker(node_name)
+        try:
+            result = _invoke_with_rate_limit_retry(
+                react.invoke,
+                {"messages": [("user", task)]},
+                config={"recursion_limit": MAX_WORKER_REACT},
+            )
+        except Exception as e:
+            err = str(e)
+            contexts.append(f"[{tag}] ERROR: {str(e)[:120]}")
+            continue
+        messages = result.get("messages", [])
+        collected.extend(tool_calls_to_strings(messages))
+        total_tokens += _aggregate_tokens(messages)
+        contexts.append(f"[{tag}] {_final_text(messages)}")
+
+    merge_prompt = (
+        f"Task: {task}\n\nPeer agent summaries (tools already applied in the sandbox):\n"
+        f"{contexts}\n\nProduce one concise final answer for the user. "
+        "Do not invent tool results; rely only on the summaries above."
+    )
+    final_text = ""
+    try:
+        synth = _invoke_with_rate_limit_retry(base_llm.invoke, merge_prompt)
+        total_tokens += _tokens_from_message(synth)
+        final_text = _wb_message_content_str(synth.content)
+    except Exception as e:
+        err = str(e)
+        final_text = f"DMAS merge failed: {str(e)[:200]}"
+        failure_tax = str(e)[:200]
+
+    lat = time.perf_counter() - t0
+    return {
+        "function_calls": collected,
+        "total_tokens": total_tokens,
+        "latency_sec": lat,
+        "error": err,
+        "final_response": final_text,
+        "execution_path": ["dmas_peer_pass", "consensus_merge"],
+        "failure_taxonomy": failure_tax or None,
     }
