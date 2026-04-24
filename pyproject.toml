@@ -17,10 +17,12 @@ dependencies = [
     "pydantic>=2.0",
     "pandas>=2.0",
     "python-dotenv>=1.0.0",
+    "typing_extensions>=4.8.0",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest", "ruff"]
+router-ml = ["scikit-learn>=1.3.0", "joblib>=1.3.0", "pandas>=2.0"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

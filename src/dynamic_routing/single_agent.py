@@ -8,6 +8,7 @@ Two modes controlled by USE_LLM_WORKERS env var:
 
 import logging
 import os
+from typing import Any, cast
 
 from langgraph.graph import END, StateGraph
 from langgraph.graph.state import CompiledStateGraph
@@ -60,8 +61,12 @@ def _build_llm_sas_graph() -> CompiledStateGraph[
 
     def sas_llm_node(state: SingleAgentState) -> dict:
         try:
+            agent_input = cast(
+                Any,
+                {"messages": [{"role": "user", "content": state.get("task", "")}]},
+            )
             result = react_agent.invoke(
-                {"messages": [("user", state.get("task", ""))]},
+                agent_input,
                 config={"recursion_limit": MAX_REACT_ITERATIONS},
             )
         except Exception as e:

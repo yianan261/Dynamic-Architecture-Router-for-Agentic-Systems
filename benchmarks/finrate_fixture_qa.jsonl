@@ -1,0 +1,3 @@
+{"id": "FR-DR-001", "task_type": "DR", "question": "What net revenue did ExampleCo report for Q2 2024?", "gold_answer": "ExampleCo reported net revenue of 50 million USD in Q2 2024."}
+{"id": "FR-EC-001", "task_type": "EC", "question": "Compare ExampleCo and RivalInc total assets in 2024.", "gold_answer": "ExampleCo had 200M assets; RivalInc had 180M assets in 2024."}
+{"id": "FR-LT-001", "task_type": "LT", "question": "How did ExampleCo operating margin change from 2023 to 2024?", "gold_answer": "Operating margin improved from 12% in 2023 to 15% in 2024."}
