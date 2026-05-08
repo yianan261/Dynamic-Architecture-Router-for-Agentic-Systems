@@ -6,6 +6,9 @@ Runs the PCAB tasks through SAS, Centralized MAS, and Decentralized MAS,
 records telemetry (latency, trajectory accuracy, tokens), and saves results to
 benchmark_results.json for evaluate_regret.py.
 
+PCAB was used as an initial pilot. Active evaluation now centers on WorkBench,
+BrowseComp-Plus, and Fin-RATE; keep this script for backward-compatible reruns.
+
 Prerequisites:
     python scripts/setup_pcab.py   # Seed the PCAB database
 

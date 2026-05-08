@@ -10,6 +10,9 @@ produces the final answer.
 Modes (same env as CMAS):
   USE_LLM_WORKERS=true  — LLM workers + LLM consensus
   USE_LLM_WORKERS=false — deterministic peer tools + template consensus
+
+PCAB-oriented branches here remain as pilot-era compatibility paths. Ongoing
+evaluation emphasis is WorkBench, BrowseComp-Plus, and Fin-RATE.
 """
 
 from __future__ import annotations

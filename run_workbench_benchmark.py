@@ -54,6 +54,7 @@ from dynamic_routing.workbench_runner import (  # noqa: E402
     run_workbench_dmas,
     run_workbench_sas,
 )
+from dynamic_routing.semantic_failure_judge import judge_semantic_failure  # noqa: E402
 
 
 def _resolve_run_identity() -> dict[str, str]:
@@ -200,6 +201,38 @@ def _require_llm_env() -> None:
         )
 
 
+def _maybe_semantic_failure(
+    *,
+    architecture: str,
+    task: str,
+    gold_answer: object,
+    verification_ok: bool,
+    verification_score: float,
+    verification_backend: str,
+    final_answer: str,
+    error_type: str,
+    runtime_taxonomy: str,
+    execution_path: list[str],
+    trace_data: dict[str, object],
+) -> dict[str, object] | None:
+    if architecture not in ("Centralized MAS", "Decentralized MAS"):
+        return None
+    if verification_ok:
+        return None
+    return judge_semantic_failure(
+        architecture=architecture,
+        task=task,
+        gold_answer=str(gold_answer),
+        final_answer=final_answer,
+        verification_score=verification_score,
+        verification_backend=verification_backend,
+        error_type=error_type,
+        runtime_taxonomy=runtime_taxonomy,
+        execution_path=execution_path,
+        trace_data=trace_data,
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="WorkBench SAS vs CMAS vs DMAS benchmark sweep")
     parser.add_argument(
@@ -294,6 +327,28 @@ def main() -> None:
             print(f"  CMAS  | ERROR: {cmas_err[:120]}")
         if tax:
             print(f"  CMAS  | TAXONOMY: {tax}")
+        cmas_semantic = _maybe_semantic_failure(
+            architecture="Centralized MAS",
+            task=q,
+            gold_answer=gold,
+            verification_ok=bool(cmas_outcome),
+            verification_score=float(cmas_score),
+            verification_backend="workbench_outcome_checker",
+            final_answer=str(cmas.get("final_response") or ""),
+            error_type=cmas_err,
+            runtime_taxonomy=str(tax or ""),
+            execution_path=list(cmas.get("execution_path") or []),
+            trace_data={
+                "function_calls": list(cmas.get("function_calls") or []),
+                "worker_path": list(cmas.get("execution_path") or []),
+                "final_response": str(cmas.get("final_response") or ""),
+            },
+        )
+        if cmas_semantic:
+            print(
+                "  CMAS  | SEMANTIC:"
+                f" {cmas_semantic.get('label')} ({cmas_semantic.get('judge_backend')})"
+            )
         print(
             f"  CMAS  | acc={cmas_score:.2f} outcome={cmas_outcome} exact={cmas_exact} "
             f"lat={cmas['latency_sec']:.3f}s tok={cmas_tok} calls={len(cmas['function_calls'])}"
@@ -310,6 +365,28 @@ def main() -> None:
             print(f"  DMAS  | ERROR: {dmas_err[:120]}")
         if dmas_tax:
             print(f"  DMAS  | TAXONOMY: {dmas_tax}")
+        dmas_semantic = _maybe_semantic_failure(
+            architecture="Decentralized MAS",
+            task=q,
+            gold_answer=gold,
+            verification_ok=bool(dmas_outcome),
+            verification_score=float(dmas_score),
+            verification_backend="workbench_outcome_checker",
+            final_answer=str(dmas.get("final_response") or ""),
+            error_type=dmas_err,
+            runtime_taxonomy=str(dmas_tax or ""),
+            execution_path=list(dmas.get("execution_path") or []),
+            trace_data={
+                "function_calls": list(dmas.get("function_calls") or []),
+                "worker_path": list(dmas.get("execution_path") or []),
+                "final_response": str(dmas.get("final_response") or ""),
+            },
+        )
+        if dmas_semantic:
+            print(
+                "  DMAS  | SEMANTIC:"
+                f" {dmas_semantic.get('label')} ({dmas_semantic.get('judge_backend')})"
+            )
         print(
             f"  DMAS  | acc={dmas_score:.2f} outcome={dmas_outcome} exact={dmas_exact} "
             f"lat={dmas['latency_sec']:.3f}s tok={dmas_tok} calls={len(dmas['function_calls'])}"
@@ -337,6 +414,10 @@ def main() -> None:
                     "error_type": err_sas,
                     "execution_path": sas["function_calls"],
                     "grading": {"outcome_match": sas_outcome, "exact_side_effect_match": sas_exact},
+                    "trace": {
+                        "coordination_path": list(sas.get("execution_path") or []),
+                        "final_response": str(sas.get("final_response") or ""),
+                    },
                 },
                 {
                     "architecture": "Centralized MAS",
@@ -346,6 +427,11 @@ def main() -> None:
                     "error_type": err_cmas,
                     "execution_path": cmas["function_calls"],
                     "grading": {"outcome_match": cmas_outcome, "exact_side_effect_match": cmas_exact},
+                    "semantic_failure": cmas_semantic,
+                    "trace": {
+                        "coordination_path": list(cmas.get("execution_path") or []),
+                        "final_response": str(cmas.get("final_response") or ""),
+                    },
                 },
                 {
                     "architecture": "Decentralized MAS",
@@ -355,6 +441,11 @@ def main() -> None:
                     "error_type": err_dmas,
                     "execution_path": dmas["function_calls"],
                     "grading": {"outcome_match": dmas_outcome, "exact_side_effect_match": dmas_exact},
+                    "semantic_failure": dmas_semantic,
+                    "trace": {
+                        "coordination_path": list(dmas.get("execution_path") or []),
+                        "final_response": str(dmas.get("final_response") or ""),
+                    },
                 },
             ],
         })
@@ -391,7 +482,10 @@ def main() -> None:
             "note": (
                 "accuracy_score: WorkBench outcome match (DB state after predicted calls vs gold). "
                 "execution_path: WorkBench-style .func(...) strings. "
-                "Tokens from LLM usage when available."
+                "semantic_failure is assigned only for failed CMAS/DMAS runs using a structured "
+                "semantic judge with heuristic fallback. "
+                "PCAB support in this repository is legacy pilot scaffolding; current evaluation "
+                "focus is WorkBench, BrowseComp-Plus, and Fin-RATE."
             ),
         },
         "tasks": task_results,

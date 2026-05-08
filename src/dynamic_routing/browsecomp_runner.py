@@ -40,6 +40,12 @@ def run_browsecomp_sas_offline(query: str, corpus: BrowseCompCorpus) -> dict[str
         "latency_sec": time.perf_counter() - t0,
         "total_tokens": 0,
         "error": "",
+        "execution_path": ["sas_retrieve", "finish"],
+        "trace": {
+            "mode": "sas_offline",
+            "query": query,
+            "context_preview": answer[:500],
+        },
     }
 
 
@@ -54,6 +60,15 @@ def run_browsecomp_cmas_offline(query: str, corpus: BrowseCompCorpus) -> dict[st
         "latency_sec": time.perf_counter() - t0,
         "total_tokens": 0,
         "error": "",
+        "execution_path": ["cmas_pass_1", "cmas_pass_2", "cmas_merge"],
+        "trace": {
+            "mode": "cmas_offline",
+            "dispatches": [
+                {"worker": "pass_1_retriever", "query": query, "context_preview": a1[:500]},
+                {"worker": "pass_2_retriever", "query": q2, "context_preview": a2[:500]},
+            ],
+            "merge_strategy": "sequential_double_pass",
+        },
     }
 
 
@@ -75,6 +90,15 @@ def run_browsecomp_dmas_offline(query: str, corpus: BrowseCompCorpus) -> dict[st
         "latency_sec": time.perf_counter() - t0,
         "total_tokens": 0,
         "error": "",
+        "execution_path": ["dmas_peer_a", "dmas_peer_b", "consensus_merge"],
+        "trace": {
+            "mode": "dmas_offline",
+            "peer_reports": [
+                {"peer": "peer_a", "query": query, "context_preview": c1[:500]},
+                {"peer": "peer_b", "query": q_alt if q_alt != query else query + " details", "context_preview": c2[:500]},
+            ],
+            "merge_strategy": "parallel_two_peer_concat",
+        },
     }
 
 
@@ -200,6 +224,8 @@ def run_browsecomp_sas_llm(query: str, corpus: BrowseCompCorpus) -> dict[str, An
             "latency_sec": time.perf_counter() - t0,
             "total_tokens": 0,
             "error": err,
+            "execution_path": ["sas_llm_error"],
+            "trace": {"mode": "sas_llm", "query": query, "agent_error": err[:300]},
         }
     messages = result.get("messages", [])
     return {
@@ -207,6 +233,13 @@ def run_browsecomp_sas_llm(query: str, corpus: BrowseCompCorpus) -> dict[str, An
         "latency_sec": time.perf_counter() - t0,
         "total_tokens": _aggregate_tokens(messages),
         "error": err,
+        "execution_path": ["sas_llm_tool_loop", "finish"],
+        "trace": {
+            "mode": "sas_llm",
+            "query": query,
+            "message_count": len(messages),
+            "final_preview": _final_text(messages)[:500],
+        },
     }
 
 

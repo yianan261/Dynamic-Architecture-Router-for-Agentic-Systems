@@ -1,6 +1,9 @@
 """
 Centralized Multi-Agent System (MAS): Hub-and-spoke topology.
 
+Note: the PCAB-specific flows in this module were used as pilot scaffolding.
+Current primary benchmark focus is WorkBench, BrowseComp-Plus, and Fin-RATE.
+
 Two modes controlled by USE_LLM_WORKERS env var:
   - LLM mode: Each worker is a restricted Llama-3.1 ReAct agent with a single tool.
     The Supervisor uses Llama-3.1 for final synthesis.

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -37,6 +38,7 @@ from dynamic_routing.browsecomp_runner import (  # noqa: E402
     judge_browsecomp_answer,
     run_browsecomp_architecture,
 )
+from dynamic_routing.semantic_failure_judge import judge_semantic_failure  # noqa: E402
 
 DEFAULT_QUERIES = project_root / "benchmarks" / "browsecomp_fixture.jsonl"
 DEFAULT_CORPUS = project_root / "benchmarks" / "browsecomp_corpus_fixture.jsonl"
@@ -57,6 +59,13 @@ def _load_queries(path: Path) -> list[dict[str, str]]:
             if q:
                 rows.append({"query_id": qid, "query": q, "gold_answer": gold})
     return rows
+
+
+def _semantic_threshold() -> float:
+    try:
+        return float(os.environ.get("SEMANTIC_FAIL_SCORE_THRESHOLD", "0.999").strip())
+    except Exception:
+        return 0.999
 
 
 def main() -> None:
@@ -81,6 +90,7 @@ def main() -> None:
         queries = queries[: args.limit]
 
     judge_backend_global = "local_overlap"
+    threshold = _semantic_threshold()
     tasks_out: list[dict] = []
 
     for row in queries:
@@ -107,14 +117,35 @@ def main() -> None:
             judge_backend_global = jbackend
             tok = int(out.get("total_tokens") or 0)
             err = out.get("error") or None
+            semantic_failure = None
+            if arch_label in ("Centralized MAS", "Decentralized MAS") and float(score) < threshold:
+                semantic_failure = judge_semantic_failure(
+                    architecture=arch_label,
+                    task=q,
+                    gold_answer=gold,
+                    final_answer=ans,
+                    verification_score=float(score),
+                    verification_backend=jbackend,
+                    error_type=str(err or ""),
+                    runtime_taxonomy="",
+                    execution_path=list(out.get("execution_path") or []),
+                    trace_data=dict(out.get("trace") or {}),
+                )
             print(f"  {arch_label[:3]} | acc={score:.2f} judge={jbackend} lat={lat:.3f}s tok={tok}")
+            if semantic_failure:
+                print(
+                    f"  {arch_label[:3]} | SEMANTIC: {semantic_failure.get('label')} "
+                    f"({semantic_failure.get('judge_backend')})"
+                )
             results_three.append({
                 "architecture": arch_label,
                 "accuracy_score": round(float(score), 2),
                 "latency_sec": round(float(lat), 4),
                 "total_tokens": tok,
                 "error_type": err,
-                "execution_path": [f"judge={jbackend}"],
+                "execution_path": list(out.get("execution_path") or []) + [f"judge={jbackend}"],
+                "trace": dict(out.get("trace") or {}),
+                "semantic_failure": semantic_failure,
             })
 
         tasks_out.append({
@@ -137,7 +168,11 @@ def main() -> None:
             "corpus": str(args.corpus.resolve()),
             "judge_backend_last": judge_backend_global,
             "use_llm_sas": bool(args.use_llm_sas),
-            "note": "Integrate official BrowseComp-Plus decrypt + indexes per upstream README when running full eval.",
+            "note": (
+                "Integrate official BrowseComp-Plus decrypt + indexes per upstream README when running full eval. "
+                "semantic_failure is assigned only for failed CMAS/DMAS runs via strict-schema judge + fallback rules. "
+                "PCAB-related paths are legacy pilot artifacts; active benchmark focus is WorkBench, BrowseComp-Plus, and Fin-RATE."
+            ),
         },
         "tasks": tasks_out,
     }

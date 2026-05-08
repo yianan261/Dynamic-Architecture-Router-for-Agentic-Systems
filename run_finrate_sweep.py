@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from collections import defaultdict
@@ -30,6 +31,7 @@ from dynamic_routing.finrate_runner import (  # noqa: E402
     load_corpus_chunks,
     run_finrate_architecture,
 )
+from dynamic_routing.semantic_failure_judge import judge_semantic_failure  # noqa: E402
 
 DEFAULT_QA = project_root / "benchmarks" / "finrate_fixture_qa.jsonl"
 DEFAULT_CORPUS = project_root / "benchmarks" / "finrate_corpus_fixture.jsonl"
@@ -68,6 +70,13 @@ def _balanced_sample(rows: list[dict[str, str]], per_type: int, seed: int) -> li
     return out
 
 
+def _semantic_threshold() -> float:
+    try:
+        return float(os.environ.get("SEMANTIC_FAIL_SCORE_THRESHOLD", "0.999").strip())
+    except Exception:
+        return 0.999
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Fin-RATE-style SAS/CMAS/DMAS sweep")
     ap.add_argument("--qa", type=Path, default=DEFAULT_QA)
@@ -91,6 +100,7 @@ def main() -> None:
 
     tasks_out: list[dict] = []
     last_judge = "local"
+    threshold = _semantic_threshold()
 
     for row in rows:
         qid = row["id"]
@@ -108,14 +118,35 @@ def main() -> None:
             lat = float(out.get("latency_sec") or 0.0)
             sc, jb = judge_finrate_answer(q, out["answer"], gold)
             last_judge = jb
+            semantic_failure = None
+            if label in ("Centralized MAS", "Decentralized MAS") and float(sc) < threshold:
+                semantic_failure = judge_semantic_failure(
+                    architecture=label,
+                    task=q,
+                    gold_answer=gold,
+                    final_answer=str(out.get("answer") or ""),
+                    verification_score=float(sc),
+                    verification_backend=jb,
+                    error_type=str(out.get("error") or ""),
+                    runtime_taxonomy="",
+                    execution_path=list(out.get("execution_path") or []),
+                    trace_data=dict(out.get("trace") or {}),
+                )
             print(f"  {label[:3]} | acc={sc:.2f} judge={jb} lat={lat:.3f}s")
+            if semantic_failure:
+                print(
+                    f"  {label[:3]} | SEMANTIC: {semantic_failure.get('label')} "
+                    f"({semantic_failure.get('judge_backend')})"
+                )
             res_block.append({
                 "architecture": label,
                 "accuracy_score": round(float(sc), 2),
                 "latency_sec": round(float(lat), 4),
                 "total_tokens": int(out.get("total_tokens") or 0),
                 "error_type": out.get("error") or None,
-                "execution_path": [f"judge={jb}"],
+                "execution_path": list(out.get("execution_path") or []) + [f"judge={jb}"],
+                "trace": dict(out.get("trace") or {}),
+                "semantic_failure": semantic_failure,
             })
         tasks_out.append({
             "task_id": qid,
@@ -136,7 +167,11 @@ def main() -> None:
             "qa": str(args.qa.resolve()),
             "corpus": str(args.corpus.resolve()),
             "judge_backend_last": last_judge,
-            "note": "For full Fin-RATE, use upstream qa/*.json + corpus/corpus.jsonl and their evaluation/qa_llm_judge.py as reference.",
+            "note": (
+                "For full Fin-RATE, use upstream qa/*.json + corpus/corpus.jsonl and their evaluation/qa_llm_judge.py as reference. "
+                "semantic_failure is assigned only for failed CMAS/DMAS runs via strict-schema judge + fallback rules. "
+                "PCAB code paths remain as pilot legacy; active benchmark focus is WorkBench, BrowseComp-Plus, and Fin-RATE."
+            ),
         },
         "tasks": tasks_out,
     }

@@ -65,6 +65,12 @@ def run_finrate_sas_offline(question: str, chunks: list[dict[str, Any]]) -> dict
         "latency_sec": time.perf_counter() - t0,
         "total_tokens": 0,
         "error": "",
+        "execution_path": ["sas_retrieve", "finish"],
+        "trace": {
+            "mode": "sas_offline",
+            "query": question[:400],
+            "context_preview": (ctx[:500] if ctx else ""),
+        },
     }
 
 
@@ -85,6 +91,15 @@ def run_finrate_cmas_offline(question: str, chunks: list[dict[str, Any]]) -> dic
         "latency_sec": time.perf_counter() - t0,
         "total_tokens": 0,
         "error": "",
+        "execution_path": ["cmas_partition", "cmas_merge", "finish"],
+        "trace": {
+            "mode": "cmas_offline",
+            "dispatches": [
+                {"worker": "company_partition_retriever", "company": co, "context_preview": retrieve_context(question, sub, 1)[:250]}
+                for co, sub in list(by_company.items())[:6]
+            ],
+            "merge_strategy": "company_bucket_merge",
+        },
     }
 
 
@@ -105,6 +120,15 @@ def run_finrate_dmas_offline(question: str, chunks: list[dict[str, Any]]) -> dic
         "latency_sec": time.perf_counter() - t0,
         "total_tokens": 0,
         "error": "",
+        "execution_path": ["dmas_peer_full", "dmas_peer_short", "consensus_merge", "finish"],
+        "trace": {
+            "mode": "dmas_offline",
+            "peer_reports": [
+                {"peer": "peer_full_query", "query": question[:240], "context_preview": c1[:500]},
+                {"peer": "peer_short_query", "query": q_short[:240], "context_preview": c2[:500]},
+            ],
+            "merge_strategy": "parallel_dual_query_merge",
+        },
     }
 
 
