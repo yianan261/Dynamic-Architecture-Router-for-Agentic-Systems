@@ -36,6 +36,12 @@ The project should transition toward broader evaluation on:
 
 These benchmarks better test realistic agentic behavior, multi-document reasoning, retrieval, and tool-dependent workflows.
 
+Fin-RATE evaluation should start with the local JSONL fixture, then use official
+or custom converted data only after upstream `qa/*.json` and corpus files have
+been converted to this repository's JSONL schema. The current runner is for
+SAS/CMAS/DMAS comparison and regret-compatible outputs; it does not implement
+official downloading or leaderboard formatting yet.
+
 ## Architecture Scope
 
 The original midstage report focused on:

@@ -17,7 +17,8 @@ This file is the cross-paper synthesis. Detailed notes live in `docs/papers/`.
    Use for architecture selection logic, measurable task features, coordination overhead, SAS/CMAS/DMAS tradeoffs, and learned router training.
 
 5. `docs/papers/mast_multi_agent_failures.md`  
-   Use for failure taxonomy, post-hoc judging, MAS failure labels, and review/evaluation loops.
+   Use for project-scoped MAST-inspired diagnostic subset framing, post-hoc judging,
+   MAS failure labels, and review/evaluation loops.
 
 ## Cross-paper design principles
 
@@ -49,9 +50,12 @@ single_agent_confidence
 estimated_coordination_cost
 ```
 
-### 4. Add failure taxonomy before complex repair loops
+### 4. Add project-scoped failure diagnostics before complex repair loops
 
-Before building autonomous repair agents, log why failures happen:
+Before building autonomous repair agents, log why failures happen. The active
+implementation is a project-scoped MAST-inspired diagnostic subset, not a full
+MAST taxonomy implementation. It combines runtime structural tags emitted during
+execution with lightweight post-hoc semantic tags for failed CMAS/DMAS outputs.
 
 ```text
 specification_failure
@@ -81,7 +85,7 @@ A large flat list of skills or tools will eventually confuse the model, especial
 - [ ] Add core routing metadata fields: decomposability_score, sequential_dependency_score, tool_count, num_required_evidence_sources.
 - [ ] Add finance-specific fields: num_entities, num_time_periods, requires_comparison, requires_temporal_reasoning.
 - [ ] Add retrieval diagnostics: retrieval_confidence, support_doc_hit_rate, hard_negative_hit_rate.
-- [ ] Add failure taxonomy enums and output fields.
+- [ ] Decide whether the current inline runtime failure_taxonomy strings should move to stable constants.
 - [ ] Modify regret evaluation to store per-architecture score, oracle_architecture, and failure labels.
 - [ ] Add report grouped by benchmark, task type, architecture, and failure category.
 ```

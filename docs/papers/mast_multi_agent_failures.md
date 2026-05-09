@@ -1,12 +1,18 @@
 # Why Do Multi-Agent LLM Systems Fail?
 
 **Source PDF:** `2503.13657v3.pdf`  
-**Primary role in this project:** Failure taxonomy and post-hoc diagnosis for multi-agent routing outcomes.  
+**Primary role in this project:** Project-scoped MAST-inspired diagnostic subset and post-hoc diagnosis for multi-agent routing outcomes.  
 **Use this note when:** designing failure labels, review loops, post-hoc judges, or evaluation metrics for CMAS/DMAS runs.
 
 ## 1. One-paragraph summary
 
 This paper introduces MAST, a taxonomy of multi-agent system failures, and MAST-Data, a dataset of annotated traces from multiple MAS frameworks. The taxonomy groups failures into system design issues, inter-agent misalignment, and task verification failures. For this project, the core value is that router evaluation should not stop at “SAS/CMAS/DMAS was correct or wrong.” It should diagnose why an architecture failed, because routing regret is only useful if the system can tell whether the failure came from poor task specification, bad coordination, ignored agent input, repeated steps, premature termination, or missing verification.
+
+The active implementation should be described as a project-scoped MAST-inspired
+diagnostic subset, not a complete implementation of the paper's full taxonomy.
+It currently combines runtime structural tags, such as loop exhaustion, cyclic
+dispatch, context overflow, tool or dispatch explosion, and unhandled execution
+errors, with lightweight post-hoc semantic tags for failed CMAS/DMAS outputs.
 
 ## 2. Key ideas to keep
 
@@ -140,9 +146,9 @@ num_repeated_steps
 ## 7. Suggested tasks for TASKS.md
 
 ```md
-- [ ] Add MAST-inspired failure labels to benchmark output schema.
-- [ ] Create `failure_taxonomy.py` with stable enum values.
-- [ ] Add optional post-hoc judge interface for failure classification.
+- [ ] Keep project-scoped MAST-inspired diagnostic subset labels in benchmark output schema.
+- [ ] Decide whether current inline runtime `failure_taxonomy` strings need stable constants.
+- [ ] Keep optional post-hoc judge interface for failed CMAS/DMAS semantic classification.
 - [ ] Add tests for failure taxonomy serialization.
 - [ ] Modify regret evaluation to group results by failure category.
 ```
@@ -163,11 +169,11 @@ tests/
 
 - Do not implement a complex autonomous repair loop before the taxonomy/logging works.
 - Do not require live LLM judges in unit tests.
-- Do not treat MAST as final truth; use it as a practical starting taxonomy.
+- Do not treat MAST as final truth; use it as a practical starting point for a project-scoped MAST-inspired diagnostic subset.
 - Do not label every failure manually if basic structured labels are enough for this phase.
 
 ## 10. Codex prompt to use
 
 ```text
-Use docs/papers/mast_multi_agent_failures.md. Inspect evaluation and result schemas. Propose a minimal failure_taxonomy.py enum and output fields for grouping router failures. Do not edit until you show the plan.
+Use docs/papers/mast_multi_agent_failures.md. Inspect evaluation and result schemas. Preserve the current project-scoped MAST-inspired diagnostic subset: runtime structural tags plus lightweight post-hoc semantic tags for failed CMAS/DMAS outputs. Decide whether a minimal failure_taxonomy.py constants module is worth adding before editing code.
 ```
