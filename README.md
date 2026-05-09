@@ -197,7 +197,7 @@ python run_browsecomp_sweep.py
 python run_browsecomp_sweep.py --queries path/to/queries.jsonl --corpus path/to/corpus.jsonl --use-llm-sas
 ```
 
-**Hybrid judge:** set `BROWSECOMP_JUDGE_BACKEND=auto|qwen|gpt|local`. For a local OpenAI-compatible Qwen server, set `BROWSECOMP_QWEN_URL`. Otherwise the worker LLM (`gpt`) or token-overlap (`local`) is used.
+**Hybrid judge:** set `BROWSECOMP_JUDGE_BACKEND=local|llm|auto`. `local` uses normalized exact / contains / overlap scoring. `llm` uses a configured semantic-equivalence judge, preferring `BROWSECOMP_QWEN_URL` when set and otherwise the worker LLM. `auto` runs local first and calls the LLM only for uncertain overlap scores.
 
 ## Fin-RATE–style sweep
 

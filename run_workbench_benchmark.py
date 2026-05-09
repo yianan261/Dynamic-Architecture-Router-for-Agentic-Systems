@@ -54,6 +54,7 @@ from dynamic_routing.workbench_runner import (  # noqa: E402
     run_workbench_dmas,
     run_workbench_sas,
 )
+from dynamic_routing.results_paths import timestamped_results_path, workbench_run_kind  # noqa: E402
 from dynamic_routing.semantic_failure_judge import judge_semantic_failure  # noqa: E402
 
 
@@ -93,14 +94,18 @@ def _resolve_run_identity() -> dict[str, str]:
 
 DEFAULT_CSV = project_root / "benchmarks" / "workbench_50_queries.csv"
 DEFAULT_OUTPUT = project_root / "benchmark_workbench_results.json"
-RESULTS_DIR = project_root / "results"
 
 
-def _timestamped_results_path(user_path: Path, ts: str) -> Path:
-    """results/<stem>_YYYYMMDD_HHMMSS<suffix> (suffix from user_path, default .json)."""
-    stem = user_path.stem
-    suffix = user_path.suffix if user_path.suffix else ".json"
-    return RESULTS_DIR / f"{stem}_{ts}{suffix}"
+def _timestamped_results_path(user_path: Path, ts: str, run_kind: str) -> Path:
+    """results/workbench/<kind>/<stem>_YYYYMMDD_HHMMSS<suffix>."""
+    return timestamped_results_path(
+        project_root,
+        "workbench",
+        run_kind,
+        user_path,
+        ts,
+        default_suffix=".json",
+    )
 
 
 def _require_workbench() -> None:
@@ -408,6 +413,7 @@ def main() -> None:
             "results": [
                 {
                     "architecture": "Single-Agent System",
+                    "final_answer": str(sas.get("final_response") or ""),
                     "accuracy_score": round(sas_score, 2),
                     "latency_sec": round(sas["latency_sec"], 4),
                     "total_tokens": int(sas_tok),
@@ -421,6 +427,7 @@ def main() -> None:
                 },
                 {
                     "architecture": "Centralized MAS",
+                    "final_answer": str(cmas.get("final_response") or ""),
                     "accuracy_score": round(cmas_score, 2),
                     "latency_sec": round(cmas["latency_sec"], 4),
                     "total_tokens": int(cmas_tok),
@@ -435,6 +442,7 @@ def main() -> None:
                 },
                 {
                     "architecture": "Decentralized MAS",
+                    "final_answer": str(dmas.get("final_response") or ""),
                     "accuracy_score": round(dmas_score, 2),
                     "latency_sec": round(dmas["latency_sec"], 4),
                     "total_tokens": int(dmas_tok),
@@ -468,7 +476,8 @@ def main() -> None:
         print(f"  router annotations: {ok} ok, {fail} fell back to SAS default")
 
     run_ts = time.strftime("%Y%m%d_%H%M%S")
-    out_path = _timestamped_results_path(Path(args.output), run_ts)
+    result_kind = workbench_run_kind(Path(args.output), int(args.limit or 0))
+    out_path = _timestamped_results_path(Path(args.output), run_ts, result_kind)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "metadata": {
@@ -482,8 +491,9 @@ def main() -> None:
             "note": (
                 "accuracy_score: WorkBench outcome match (DB state after predicted calls vs gold). "
                 "execution_path: WorkBench-style .func(...) strings. "
-                "semantic_failure is assigned only for failed CMAS/DMAS runs using a structured "
-                "semantic judge with heuristic fallback. "
+                "Failure diagnostics are a project-scoped MAST-inspired diagnostic subset: "
+                "runtime structural tags plus lightweight post-hoc semantic_failure labels "
+                "for failed CMAS/DMAS runs. "
                 "PCAB support in this repository is legacy pilot scaffolding; current evaluation "
                 "focus is WorkBench, BrowseComp-Plus, and Fin-RATE."
             ),
@@ -495,7 +505,7 @@ def main() -> None:
     print(f"\nWrote {out_path.resolve()}")
 
     if args.csv_out:
-        csv_table = _timestamped_results_path(Path(args.csv_out), run_ts)
+        csv_table = _timestamped_results_path(Path(args.csv_out), run_ts, result_kind)
     elif args.write_csv:
         csv_table = out_path.with_suffix(".csv")
     else:

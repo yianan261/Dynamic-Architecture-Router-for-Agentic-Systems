@@ -31,5 +31,9 @@ pcab_environment.db
 # WorkBench upstream clone (run scripts/setup_workbench.py)
 vendor/WorkBench/
 
+# Downloaded and converted benchmark datasets
+data/raw/
+data/converted/
+
 # Timestamped regret / oracle exports from evaluate_regret.py
 results/

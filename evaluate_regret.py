@@ -35,21 +35,28 @@ from dynamic_routing.dotenv_util import load_project_root_dotenv  # noqa: E402
 
 load_project_root_dotenv()
 
+from dynamic_routing.results_paths import infer_benchmark_from_payload, timestamped_results_path  # noqa: E402
+
 DEFAULT_RESULTS_PATH = project_root / "benchmark_results.json"
-RESULTS_DIR = project_root / "results"
 
 
 def _timestamped_export_path(
     user_path: Path,
+    benchmark: str,
     ts: str | None = None,
     *,
     default_suffix: str = ".out",
 ) -> Path:
-    """``results/<stem>_YYYYMMDD_HHMMSS<suffix>`` under the project root."""
+    """``results/<benchmark>/regret/<stem>_YYYYMMDD_HHMMSS<suffix>``."""
     stamp = ts if ts is not None else time.strftime("%Y%m%d_%H%M%S")
-    stem = user_path.stem
-    suffix = user_path.suffix if user_path.suffix else default_suffix
-    return RESULTS_DIR / f"{stem}_{stamp}{suffix}"
+    return timestamped_results_path(
+        project_root,
+        benchmark,
+        "regret",
+        user_path,
+        stamp,
+        default_suffix=default_suffix,
+    )
 
 
 @dataclass
@@ -190,6 +197,7 @@ def main() -> None:
     data = load_results(resolved)
     metadata = data.get("metadata", {})
     tasks = data.get("tasks", [])
+    benchmark = infer_benchmark_from_payload(data, resolved)
 
     print("=" * 70)
     print("Oracle Evaluation Harness (v2)")
@@ -288,7 +296,7 @@ def main() -> None:
     if args.export_json is not None:
         report = {"summary": summary, "tasks": export_rows}
         json_path = _timestamped_export_path(
-            args.export_json, export_ts, default_suffix=".json"
+            args.export_json, benchmark, export_ts, default_suffix=".json"
         )
         json_path.parent.mkdir(parents=True, exist_ok=True)
         with json_path.open("w", encoding="utf-8") as f:
@@ -299,7 +307,7 @@ def main() -> None:
         fieldnames = list(export_rows[0].keys()) if export_rows else []
         if fieldnames:
             csv_path = _timestamped_export_path(
-                args.export_csv, export_ts, default_suffix=".csv"
+                args.export_csv, benchmark, export_ts, default_suffix=".csv"
             )
             csv_path.parent.mkdir(parents=True, exist_ok=True)
             with csv_path.open("w", newline="", encoding="utf-8") as f:
