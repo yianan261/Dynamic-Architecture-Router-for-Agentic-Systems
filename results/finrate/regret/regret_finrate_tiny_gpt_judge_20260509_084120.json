@@ -1,0 +1,88 @@
+{
+  "summary": {
+    "source": "/scratch2/ychen17/DynamicRoutingAgents/results/finrate/converted/pilot_finrate_tiny_gpt_judge_20260509_084055.json",
+    "phase": "finrate_official_or_custom_converted",
+    "tasks_evaluated": 6,
+    "tasks_with_router_prediction": 0
+  },
+  "tasks": [
+    {
+      "task_id": "FR-DR-0",
+      "description": "What was the total amount spent by VALERO ENERGY CORP/TX on share repurchases during the fourth quarter of 2024, and what was the average price paid per share?",
+      "oracle_architecture": "Centralized MAS",
+      "oracle_accuracy": 0.0,
+      "oracle_latency_sec": 0.0003,
+      "oracle_total_tokens": 0,
+      "router_prediction": null,
+      "perfect_routing": null,
+      "accuracy_regret": null,
+      "latency_regret_sec": null,
+      "token_regret": null
+    },
+    {
+      "task_id": "FR-DR-1",
+      "description": "What was the return on plan assets (ROPA) for VALERO ENERGY CORP/TX's pension plans in 2025, and how did it compare to the previous year?",
+      "oracle_architecture": "Centralized MAS",
+      "oracle_accuracy": 0.0,
+      "oracle_latency_sec": 0.0003,
+      "oracle_total_tokens": 0,
+      "router_prediction": null,
+      "perfect_routing": null,
+      "accuracy_regret": null,
+      "latency_regret_sec": null,
+      "token_regret": null
+    },
+    {
+      "task_id": "FR-EC-0",
+      "description": "In 2020, what were the key governance policies and internal control mechanisms reported by CADIZ_INC and HOUSTON_AMERICAN_ENERGY_CORP, and how do these compare in terms of effectiveness and their influence on company performance?",
+      "oracle_architecture": "Single-Agent System",
+      "oracle_accuracy": 0.0,
+      "oracle_latency_sec": 0.0004,
+      "oracle_total_tokens": 0,
+      "router_prediction": null,
+      "perfect_routing": null,
+      "accuracy_regret": null,
+      "latency_regret_sec": null,
+      "token_regret": null
+    },
+    {
+      "task_id": "FR-EC-1",
+      "description": "How did the corporate governance practices of CADIZ_INC and HOUSTON_AMERICAN_ENERGY_CORP in 2020 address potential risks related to executive roles and board oversight, and what implications might this have for their strategic direction and financial health?",
+      "oracle_architecture": "Single-Agent System",
+      "oracle_accuracy": 0.0,
+      "oracle_latency_sec": 0.0004,
+      "oracle_total_tokens": 0,
+      "router_prediction": null,
+      "perfect_routing": null,
+      "accuracy_regret": null,
+      "latency_regret_sec": null,
+      "token_regret": null
+    },
+    {
+      "task_id": "FR-LT-0",
+      "description": "How did AGILYSYS INC's strategic direction and business model evolve from its origins to its focus in 2019 and 2020?",
+      "oracle_architecture": "Single-Agent System",
+      "oracle_accuracy": 0.0,
+      "oracle_latency_sec": 0.0003,
+      "oracle_total_tokens": 0,
+      "router_prediction": null,
+      "perfect_routing": null,
+      "accuracy_regret": null,
+      "latency_regret_sec": null,
+      "token_regret": null
+    },
+    {
+      "task_id": "FR-LT-1",
+      "description": "What were the major strategic initiatives and decisions undertaken by AGILYSYS INC between 2019 and 2020 to support its hospitality-focused strategy?",
+      "oracle_architecture": "Single-Agent System",
+      "oracle_accuracy": 0.0,
+      "oracle_latency_sec": 0.0003,
+      "oracle_total_tokens": 0,
+      "router_prediction": null,
+      "perfect_routing": null,
+      "accuracy_regret": null,
+      "latency_regret_sec": null,
+      "token_regret": null
+    }
+  ]
+}

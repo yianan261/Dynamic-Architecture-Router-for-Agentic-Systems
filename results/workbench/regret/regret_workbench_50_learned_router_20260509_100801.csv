@@ -1,0 +1,51 @@
+task_id,description,oracle_architecture,oracle_accuracy,oracle_latency_sec,oracle_total_tokens,router_prediction,perfect_routing,accuracy_regret,latency_regret_sec,token_regret
+WB-000,nadia just sent me an email that I need to delete. Can you get rid of of the most recent email they sent me?,Single-Agent System,1.0,3.38,7909,Decentralized MAS,False,0.0,0.57,258
+WB-001,All my emails from santiago from the last 3 days need to be deleted. Can you do that?,Single-Agent System,1.0,2.4201,5157,Decentralized MAS,False,1.0,1.37,244
+WB-002,I need to get rid of all my emails from nia from the last 4 days. Can you do delete them?,Single-Agent System,1.0,3.2463,5158,Decentralized MAS,False,0.0,5.31,183
+WB-003,I need to get rid of all my emails from nadia from the last 4 days. Can you do delete them?,Single-Agent System,1.0,2.5672,5466,Decentralized MAS,False,0.0,0.42,177
+WB-004,"I need to send an email to dmitri saying 'Hey dmitri,\n\nI have some ideas for the process review that I'd like to run by you. When are you free?\n\nThanks,\n\nSam' and title it 'Update on Product Launch Analysis'. Can you do that?",Decentralized MAS,0.0,2.3891,3610,Decentralized MAS,True,0.0,0.0,0
+WB-005,Reply to yuki's last email about 'Update on Corporate Social Responsibility Initiative' with 'Thanks for the update - I will get back to you tomorrow.',Single-Agent System,1.0,2.6189,5441,Decentralized MAS,False,0.0,0.42,184
+WB-006,Reply to nia's last email about 'Task Update on Design logo for website' with 'Thanks for the update - I will get back to you tomorrow.',Single-Agent System,1.0,2.8491,5233,Centralized MAS,False,0.0,1.8,3157
+WB-007,can you forward my most recent email from olga to raj,Decentralized MAS,1.0,3.8583,8862,Decentralized MAS,True,0.0,0.0,0
+WB-008,"can you reply to the latest email from carlos with 'Got it, thank you!'",Decentralized MAS,1.0,3.5209,6350,Decentralized MAS,True,0.0,0.0,0
+WB-009,"I need to reply to the latest email from amir with 'Got it, thank you!'. Can you do that?",Single-Agent System,1.0,2.8849,6178,Decentralized MAS,False,0.0,0.03,218
+WB-010,can you cancel my first meeting on December 8,Single-Agent System,1.0,2.9427,5249,Decentralized MAS,False,0.0,0.27,188
+WB-011,can you cancel my first meeting on December 6,Single-Agent System,1.0,2.3752,5242,Decentralized MAS,False,0.0,0.9,159
+WB-012,Can you change the name of the last event on November 30 to brainstorming session,Decentralized MAS,1.0,3.0643,5578,Decentralized MAS,True,0.0,0.0,0
+WB-013,please move my first meeting with amir on December 20 by 30 minutes,Single-Agent System,1.0,2.6145,5092,Decentralized MAS,False,0.0,0.56,202
+WB-014,Push back my first meeting with dmitri on December 18 by 1 hours,Single-Agent System,1.0,2.6654,5215,Decentralized MAS,False,0.0,0.63,191
+WB-015,I need to cancel my next meeting with fatima. Can you do that for me please?,Single-Agent System,1.0,2.9472,5003,Decentralized MAS,False,0.0,0.06,174
+WB-016,"If I haven't met with amir in the last 4 days, schedule a 30-minute meeting called 'catch-up' for my first free slot from tomorrow",Single-Agent System,0.0,3.4375,6791,Decentralized MAS,False,0.0,0.0,233
+WB-017,Delete my meetings on Friday before 12,Single-Agent System,1.0,2.7797,5311,Decentralized MAS,False,0.0,1.33,2096
+WB-018,Cancel my meetings on Friday before 10:30,Decentralized MAS,1.0,3.1861,5367,Decentralized MAS,True,0.0,0.0,0
+WB-019,something came up. Can you cancel my meetings on Friday before 10:30?,Single-Agent System,1.0,2.9552,5228,Decentralized MAS,False,0.0,0.6,179
+WB-020,Please plot for me the distribution of total visits and average session duration between November 15 and November 24,Single-Agent System,1.0,2.1145,4399,Decentralized MAS,False,1.0,1.73,3145
+WB-021,Please plot for me the distribution of total visits and average session duration between November 24 and November 28,Single-Agent System,1.0,2.0759,4397,Decentralized MAS,False,1.0,2.88,5219
+WB-022,"was total visits more than 3 at any time since October 6? If so, please plot it as a line chart",Single-Agent System,1.0,3.2613,7580,Decentralized MAS,False,1.0,0.95,289
+WB-023,Can you make a line chart of total visits since the last 4 weeks if it was more than 10 at any time in the last 4 weeks?,Centralized MAS,0.0,1.871,275,Decentralized MAS,False,0.0,1.34,7024
+WB-024,"Was average session duration less than 2 at any time in the last 2 weeks? If so, please plot it as a line chart",Single-Agent System,1.0,1.7989,4402,Decentralized MAS,False,0.0,0.38,202
+WB-025,"If average session duration is more than 3% lower than October 4, make a line plot of it since then",Single-Agent System,1.0,2.3969,8172,Decentralized MAS,False,1.0,2.65,3436
+WB-026,"Is total visits more than 2% lower than it was on Saturday? If so, please plot it as a line chart since then",Decentralized MAS,1.0,3.9926,9117,Decentralized MAS,True,0.0,0.0,0
+WB-027,"Was total visits on monday more than 5% higher than it was the previous monday? If so, please plot it as a line chart",Centralized MAS,1.0,1.8458,258,Decentralized MAS,False,1.0,2.4,6592
+WB-028,"If engaged users on sunday was more than 2% lower than it was the previous sunday, make a line plot of it over that period.",Centralized MAS,0.0,1.8154,260,Decentralized MAS,False,0.0,3.44,9245
+WB-029,"if engaged users grew by more than total visits since Tuesday, make a line plot of both since then",Single-Agent System,0.0,1.8472,4294,Decentralized MAS,False,0.0,2.31,2588
+WB-030,Move all of kofi's tasks that are in progress to in review,Single-Agent System,1.0,3.6959,6752,Decentralized MAS,False,0.0,0.3,51
+WB-031,I need to add a new task to the Design backlog called Develop prototype for data export and assign it to fatima. It's due on December 6. Can you do that?,Decentralized MAS,1.0,3.4,5195,Decentralized MAS,True,0.0,0.0,0
+WB-032,Add a new task to the Front end backlog called Integrate Twilio SMS API with frontend and assign it to santiago. It's due on December 7.,Decentralized MAS,1.0,3.4495,5213,Decentralized MAS,True,0.0,0.0,0
+WB-033,Add a new task to the Front end backlog called Fix bug in user authentication module and assign it to yuki. It's due on December 6.,Single-Agent System,1.0,3.2646,6803,Decentralized MAS,False,0.0,0.65,0
+WB-034,can you move all of aisha's overdue tasks in the backlog to in progress?,Decentralized MAS,0.0,6.8529,17565,Decentralized MAS,True,0.0,0.0,0
+WB-035,fatima has a bunch of overdue tasks in the backlog. Can you move them to in progress?,Decentralized MAS,1.0,3.9681,5145,Decentralized MAS,True,0.0,0.0,0
+WB-036,I've finished reviewing all of fatima's tasks. Can you move all the ones that are in review to completed?,Single-Agent System,1.0,3.7888,6717,Decentralized MAS,False,0.0,0.54,193
+WB-037,I need to reassign all of amir's in progress tasks to anaya. Can you do that?,Single-Agent System,1.0,3.9658,6780,Decentralized MAS,False,1.0,4.17,9874
+WB-038,jinsoo is on vacation now so move all their unfinished tasks to the backlog.,Decentralized MAS,0.0,5.0628,12960,Decentralized MAS,True,0.0,0.0,0
+WB-039,can you take carlos's most urgent task and reassign it to luis?,Decentralized MAS,1.0,3.9154,9880,Decentralized MAS,True,0.0,0.0,0
+WB-040,Quinn Brown has moved to lost status. Can you update that in the crm?,Single-Agent System,1.0,2.596,5592,Decentralized MAS,False,0.0,0.13,162
+WB-041,We no longer need to keep Shannon Wilson in the crm. Can you delete them?,Single-Agent System,1.0,2.6036,5546,Decentralized MAS,False,0.0,0.24,158
+WB-042,Kerry Moore is no longer a customer. Can you delete them from the crm?,Single-Agent System,1.0,2.4219,5564,Centralized MAS,False,0.0,0.96,267
+WB-043,Reassign Rahul Martinez to Lena in the crm,Single-Agent System,1.0,3.3701,7469,Decentralized MAS,False,0.0,0.53,184
+WB-044,Reassign all of Raj's leads that are interested in services to Sofia in the crm.,Decentralized MAS,1.0,5.5288,10549,Decentralized MAS,True,0.0,0.0,0
+WB-045,Reassign all of Nadia's leads that are interested in consulting to Raj in the crm.,Decentralized MAS,1.0,4.0293,7807,Decentralized MAS,True,0.0,0.0,0
+WB-046,Reassign all of Raj's leads that are interested in training to Akira in the crm.,Single-Agent System,1.0,4.6957,10063,Decentralized MAS,False,0.0,0.29,228
+WB-047,Sofia is taking over all of Lena's customers that are interested in services and are either qualified or in proposal. Can you reassign them in the crm?,Single-Agent System,1.0,5.1657,10964,Centralized MAS,False,0.0,3.1,8019
+WB-048,I need to move all of Raj's customers that are in the qualified stage and interested in services to lost. Can you make that change in the crm?,Single-Agent System,0.0,3.781,7775,Centralized MAS,False,0.0,0.65,326
+WB-049,Move all customers that haven't responded to a proposal for the consulting product in 5 weeks to lost in the crm,Centralized MAS,1.0,1.774,247,Centralized MAS,True,0.0,0.0,0

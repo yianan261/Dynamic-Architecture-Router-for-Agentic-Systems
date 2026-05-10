@@ -1,0 +1,7 @@
+task_id,description,oracle_architecture,oracle_accuracy,oracle_latency_sec,oracle_total_tokens,router_prediction,perfect_routing,accuracy_regret,latency_regret_sec,token_regret
+FR-DR-0,"What was the total amount spent by VALERO ENERGY CORP/TX on share repurchases during the fourth quarter of 2024, and what was the average price paid per share?",Centralized MAS,0.0,0.0003,0,,,,,
+FR-DR-1,"What was the return on plan assets (ROPA) for VALERO ENERGY CORP/TX's pension plans in 2025, and how did it compare to the previous year?",Centralized MAS,0.0,0.0003,0,,,,,
+FR-EC-0,"In 2020, what were the key governance policies and internal control mechanisms reported by CADIZ_INC and HOUSTON_AMERICAN_ENERGY_CORP, and how do these compare in terms of effectiveness and their influence on company performance?",Single-Agent System,0.0,0.0004,0,,,,,
+FR-EC-1,"How did the corporate governance practices of CADIZ_INC and HOUSTON_AMERICAN_ENERGY_CORP in 2020 address potential risks related to executive roles and board oversight, and what implications might this have for their strategic direction and financial health?",Single-Agent System,0.0,0.0004,0,,,,,
+FR-LT-0,How did AGILYSYS INC's strategic direction and business model evolve from its origins to its focus in 2019 and 2020?,Single-Agent System,0.0,0.0003,0,,,,,
+FR-LT-1,What were the major strategic initiatives and decisions undertaken by AGILYSYS INC between 2019 and 2020 to support its hospitality-focused strategy?,Single-Agent System,0.0,0.0003,0,,,,,
