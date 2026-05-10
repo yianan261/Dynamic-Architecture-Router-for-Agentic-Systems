@@ -29,6 +29,12 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("training_csv", type=Path)
     ap.add_argument("-o", "--output", type=Path, default=project_root / "models" / "router_policy.joblib")
+    ap.add_argument(
+        "--class-weight",
+        choices=["none", "balanced"],
+        default="none",
+        help="Class weighting for logistic regression. Use balanced only after checking label skew.",
+    )
     args = ap.parse_args()
     df = pd.read_csv(args.training_csv)
     feat_cols = [
@@ -56,8 +62,7 @@ def main() -> None:
     classes = sorted(set(y.tolist()))
     clf = LogisticRegression(
         max_iter=200,
-        multi_class="multinomial",
-        class_weight="balanced",
+        class_weight=None if args.class_weight == "none" else args.class_weight,
         solver="lbfgs",
     )
     if len(set(y.tolist())) < 2:
@@ -66,8 +71,16 @@ def main() -> None:
     clf.fit(X, y)
     fitted_classes = list(getattr(clf, "classes_", classes))
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump({"model": clf, "feature_names": feat_cols, "classes": fitted_classes}, args.output)
-    print(f"Wrote {args.output.resolve()} classes={fitted_classes}")
+    joblib.dump(
+        {
+            "model": clf,
+            "feature_names": feat_cols,
+            "classes": fitted_classes,
+            "class_weight": args.class_weight,
+        },
+        args.output,
+    )
+    print(f"Wrote {args.output.resolve()} classes={fitted_classes} class_weight={args.class_weight}")
 
 
 if __name__ == "__main__":

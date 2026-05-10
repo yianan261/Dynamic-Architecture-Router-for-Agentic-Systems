@@ -37,19 +37,19 @@
 - [ ] Implement official Fin-RATE download / leaderboard formatting only if explicitly needed later.
 
 ### Sweeps
-- [ ] Run pilot sweep across:
+- [x] Run pilot sweep across:
       - WorkBench
       - BrowseComp-Plus
       - Fin-RATE
       using sampled real benchmark subsets.
 
-- [ ] Execute SAS / CMAS / DMAS for all pilot tasks.
+- [x] Execute SAS / CMAS / DMAS for all pilot tasks.
 
-- [ ] Run semantic judging:
+- [x] Run semantic judging:
       - BrowseComp → Qwen/local
       - Fin-RATE → GPT judge
 
-- [ ] Compute:
+- [x] Compute:
       - accuracy
       - latency
       - token usage
@@ -57,22 +57,22 @@
       - oracle architecture
       - regret
 
-- [ ] Analyze project-scoped failure diagnostics.
+- [x] Analyze project-scoped failure diagnostics.
 
-- [ ] Compare:
+- [x] Compare:
       - coordination tax
       - failure modes
       - regret trends
       across architectures.
 
 ### Learned router
-- [ ] Review routing metadata features.
+- [x] Review routing metadata features.
 
-- [ ] Generate router training labels from oracle/regret outputs.
+- [x] Generate router training labels from oracle/regret outputs.
 
-- [ ] Train logistic regression router.
+- [x] Train logistic regression router.
 
-- [ ] Compare learned router vs rule-based router:
+- [x] Compare learned router vs rule-based router:
       - routing accuracy
       - average regret
       - architecture selection distribution

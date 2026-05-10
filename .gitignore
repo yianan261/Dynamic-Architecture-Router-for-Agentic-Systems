@@ -37,3 +37,6 @@ data/converted/
 
 # Timestamped regret / oracle exports from evaluate_regret.py
 results/
+
+# Learned-router model artifacts
+models/*.joblib

@@ -1,5 +1,52 @@
 # Current Status
 
+## Last completed resume task: pilot sweeps and learned-router sanity pass
+
+Completed:
+- Ran 30-instance BrowseComp-Plus source-aware pilot with local judging.
+- Ran 30-instance Fin-RATE source-aware pilot with GPT judging.
+- Ran 50-instance WorkBench pilot with OpenAI workers.
+- Exported regret JSON/CSV reports for all three pilot runs.
+- Generated router training rows from all pilot outputs:
+  - `results/router/training/router_training_workbench_50_20260509_100000.csv`
+  - `results/router/training/router_training_browsecomp_plus_30_20260509_100000.csv`
+  - `results/router/training/router_training_finrate_30_20260509_100000.csv`
+  - `results/router/training/router_training_pilots_110_20260509_100000.csv`
+- Trained two logistic-regression router models:
+  - `models/router_policy_pilots_110_20260509_100000.joblib` using balanced class weights.
+  - `models/router_policy_pilots_110_unweighted_20260509_101000.joblib` using unweighted classes.
+- Compared the current rule router, balanced learned router, and unweighted learned router through annotated pilot JSONs plus regret reports.
+
+Pilot router-label distribution:
+- Overall: SAS 88, DMAS 14, CMAS 8.
+- WorkBench: SAS 32, DMAS 14, CMAS 4.
+- BrowseComp-Plus: SAS 26, CMAS 4.
+- Fin-RATE: SAS 30.
+
+Router comparison outcome:
+- The existing rule router predicts SAS for these pilot tasks and matches the SAS-heavy oracle labels:
+  - WorkBench: 32/50 perfect routing, avg accuracy regret 0.08.
+  - BrowseComp-Plus: 26/30 perfect routing, avg accuracy regret 0.00.
+  - Fin-RATE: 30/30 perfect routing, avg accuracy regret 0.00.
+- The balanced learned router over-amplified minority labels and routed nearly everything to DMAS:
+  - WorkBench: 15/50 perfect routing, avg accuracy regret 0.14.
+  - BrowseComp-Plus: 0/30 perfect routing, avg accuracy regret 0.00.
+  - Fin-RATE: 0/30 perfect routing, avg accuracy regret 0.02.
+- The unweighted learned router collapsed to the conservative SAS policy and matched the rule-router regret results on this pilot set.
+
+Implementation note:
+- `scripts/train_router_from_regret.py` now exposes `--class-weight none|balanced`.
+- Default is `none` because the first pilot label set is small and strongly SAS-skewed; balanced training remains available after label balance improves.
+
+Validation status:
+- `python -m py_compile scripts/train_router_from_regret.py` passed.
+- Router annotation and regret evaluation completed for rule, balanced learned, and unweighted learned variants.
+
+Remaining risk:
+- BrowseComp-Plus and Fin-RATE labels are provisional because their current pilots are source-aware/context-returning rather than final answer-synthesis evaluations.
+- The current metadata features are too weak/coarse to recover the WorkBench DMAS/CMAS oracle cases from only 110 pilot rows.
+- The learned router should not replace the rule router yet; the best current behavior is conservative SAS fallback until more validated labels and stronger metadata are available.
+
 ## Last completed resume task: Fin-RATE structured GPT/local judging
 
 Implemented:
