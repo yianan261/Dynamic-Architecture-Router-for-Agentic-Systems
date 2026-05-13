@@ -43,11 +43,50 @@ This project implements a **Dynamic Architecture Router** that:
 | `parallelism > 0.6` and `tools < 12` | **Centralized MAS** | Moderately parallel: hub-and-spoke orchestration |
 | Default | **SAS** | Matched-compute baseline when structure is ambiguous |
 
+## Optimization Objective
+
+The core goal is to learn when multi-agent coordination is worth paying for. Coordination tax arises directly from message passing across edges $E$: each transmission appends prior context to a new LLM prompt, so token usage grows with the depth and connectivity of the agent graph. A static architecture assignment is therefore inherently suboptimal for mixed workloads.
+
+Rather than maximizing accuracy at any computational cost, the router maps an incoming query $q$ to a predicted architecture:
+
+$$
+\hat{a}(q) \in \{\text{SAS}, \text{CMAS}, \text{DMAS}\}
+$$
+
+To define a theoretical ground truth, we evaluate each architecture with a Composite Reward Score $R$. This score asks the economic question that matters for deployment: is the extra accuracy of a multi-agent system worth the latency and token cost?
+
+The router's objective is to minimize **Routing Regret**, the utility lost by not selecting the mathematically optimal Oracle architecture $O(q)$. While exact reward weights can vary by enterprise Service Level Agreements (SLAs), this project uses a representative latency-sensitive deployment profile:
+
+$$
+\alpha = 0.50 \quad \text{(Accuracy)}, \qquad
+\beta = 0.40 \quad \text{(Latency)}, \qquad
+\gamma = 0.10 \quad \text{(Token Efficiency)}
+$$
+
+For fair task-level comparison, latency and token costs are max-normalized against the worst-performing architecture for that query. Formally, the router seeks to approximate the Oracle by maximizing expected Composite Reward over the task space:
+
+$$
+\hat{a}(q) \approx O(q) =
+\arg\max_{a \in \{\text{SAS}, \text{CMAS}, \text{DMAS}\}} R(a, q)
+$$
+
+where
+
+$$
+\begin{aligned}
+R(a,q) ={}& \alpha \cdot \text{Acc}(a,q) \\
+&- \beta \cdot \frac{\text{Lat}(a,q)}{\max_{a' \in A} \text{Lat}(a',q)} \\
+&- \gamma \cdot \frac{\text{Tok}(a,q)}{\max_{a' \in A} \text{Tok}(a',q)}
+\end{aligned}
+$$
+
+In plain terms: the project routes each task to the architecture that gives the best accuracy/cost tradeoff, not the architecture that is most complex or most accurate in isolation.
+
 ## Current Status
 
 | Component | Status |
 |-----------|--------|
-| **Implemented** | Router graph (LangGraph), SAS, CMAS, **DMAS** (parallel PCAB peers + consensus; WorkBench fixed-order peer pass + merge), PCAB / WorkBench harnesses, BrowseComp-Plus and Fin-RATE fixed-corpus runners, regret oracle |
+| **Implemented** | Router graph (LangGraph), SAS, CMAS, **DMAS** (WorkBench fixed-order peer pass + merge), WorkBench harnesses, BrowseComp-Plus and Fin-RATE fixed-corpus runners, regret oracle |
 | **Partial** | vLLM routing — `predict_routing_metadata` + keyword fallback (`USE_LLM_ROUTER=false`). Optional **learned router**: train with `scripts/train_router_from_regret.py`, set `ROUTER_LEARNED_MODEL_PATH`. |
 | **Benchmarks** | WorkBench 50-task pilot; BrowseComp-Plus and Fin-RATE 30-task fixed-corpus pilots with v1 deterministic/offline architectures and v2.0 LLM-backed SAS/CMAS/DMAS agents. |
 
@@ -59,24 +98,22 @@ DynamicRoutingAgents/
 ├── requirements.txt
 ├── pyproject.toml
 ├── run_examples.py              # Example execution script
-├── run_benchmark_sweep.py       # PCAB sweep: SAS + CMAS + DMAS
+├── run_workbench_benchmark.py   # WorkBench sweep: SAS + CMAS + DMAS
 ├── run_browsecomp_sweep.py      # BrowseComp-style local corpus + three architectures
 ├── run_finrate_sweep.py         # Fin-RATE-style QA + corpus (fixture or upstream paths)
 ├── evaluate_regret.py           # Oracle Evaluation Harness (v2, accuracy-based regret)
 ├── scripts/
 │   ├── analyze_llm_fixed_corpus_results.py # v2.0 aggregate oracle/regret tables
-│   └── setup_pcab.py            # Initialize PCAB benchmark database
+│   └── setup_workbench.py       # Clone WorkBench and prepare the 50-task slice
 └── src/
     └── dynamic_routing/
         ├── __init__.py
         ├── state.py             # RouterState, CentralizedState, SingleAgentState
         ├── router.py            # Main Dynamic Router graph
-        ├── pcab.py              # PCAB database schema & agent tools
-        ├── pcab_tasks.py        # PCAB task registry (gold schemas, extraction params)
         ├── agent_tools.py       # LangChain @tool bindings for Llama (JSON schema)
         ├── single_agent.py      # SAS: ReAct loop, unified memory
-        ├── centralized_mas.py   # Hub-and-spoke MAS (PCAB-backed)
-        ├── decentralized_mas.py # Parallel peers + merge (PCAB / router)
+        ├── centralized_mas.py   # Hub-and-spoke MAS orchestration
+        ├── decentralized_mas.py # Parallel peers + merge
         ├── browsecomp_env.py    # Local corpus helper for BrowseComp-style runs
         ├── browsecomp_runner.py # SAS / CMAS / DMAS + hybrid judge hooks
         ├── finrate_runner.py    # Fin-RATE-style retrieval + three architectures
@@ -93,8 +130,8 @@ pip install -r requirements.txt
 # Or install in editable mode
 pip install -e .
 
-# Initialize the PCAB benchmark database (required for Centralized MAS)
-python scripts/setup_pcab.py
+# Optional: clone WorkBench and build the 50-task slice
+python scripts/setup_workbench.py --build-slice
 ```
 
 ## Usage
@@ -107,23 +144,23 @@ python run_examples.py
 
 This runs five test cases demonstrating routing to each topology.
 
-### Run Benchmark Sweep (PCAB End-to-End)
+### Run WorkBench Sweep
 
 ```bash
-python scripts/setup_pcab.py   # Ensure database is seeded
-python run_benchmark_sweep.py
+python scripts/setup_workbench.py --build-slice
+python run_workbench_benchmark.py --write-csv
 ```
 
-Runs all PCAB tasks through **SAS, CMAS, and DMAS**, records latency and trajectory accuracy, and prints a summary. Rule-based mode (no LLM) is the default for a fast sanity check.
+Runs the WorkBench 50-task slice through **SAS, CMAS, and DMAS**, records latency, token usage, outcome-centric accuracy, execution traces, and semantic failure diagnostics.
 
 ### Run Oracle Evaluation Harness (Routing Regret)
 
 ```bash
-python run_benchmark_sweep.py   # Generates benchmark_results.json
-python evaluate_regret.py      # Loads JSON, computes oracle and regret
+python run_workbench_benchmark.py --write-csv
+python evaluate_regret.py results/workbench/fixtures/<workbench-run>.json
 ```
 
-Loads `benchmark_results.json` from the sweep and computes the Oracle Baseline (composite reward) per task. Regret metrics appear when `router_prediction` is populated (e.g. after running the full router).
+Loads benchmark outputs and computes the Oracle Baseline, composite rewards, and routing regret. The v2.0 BrowseComp-Plus and Fin-RATE aggregate path uses `scripts/analyze_llm_fixed_corpus_results.py`.
 
 ### Programmatic Usage
 
@@ -137,7 +174,7 @@ print(result["final_response"])
 
 ### Single-Agent System (SAS): ReAct Loop
 
-The SAS uses a ReAct (Reason + Act) loop with unified memory: every thought and tool result is appended to a single message stream. It invokes PCAB tools sequentially (contact → calendar → drive → commute as needed) and is optimal for deep sequential tasks with strict dependencies.
+The SAS uses a ReAct (Reason + Act) loop with unified memory: every thought and tool result is appended to a single message stream. It is the baseline for deep sequential tasks, strict dependency chains, and cases where coordination overhead is unlikely to buy enough accuracy improvement.
 
 ### Routing by Query Patterns
 
@@ -159,16 +196,6 @@ python -m vllm.entrypoints.openai.api_server \
 
 Then set `USE_LLM_ROUTER=true` (default when unset). If vLLM is unavailable, the router falls back to keyword heuristics.
 
-## Centralized MAS: Personalized Context Assembly Benchmark (PCAB)
-
-The Centralized MAS implements a hub-and-spoke topology backed by the PCAB SQLite database:
-
-- **Supervisor**: Delegates to workers and synthesizes outputs; acts as validation bottleneck
-- **Workers**: Calendar, Drive, Commute (Maps), Contacts agents query `pcab_environment.db`; cannot communicate directly
-- **State**: `Annotated[list, operator.add]` for `aggregated_context`—workers append results without passing full history
-
-Example task: *"I need to meet with Dr. Hong Man on March 16th after my Deep Learning lecture. Where should I go, and how long will it take to walk there?"* → Supervisor delegates to Contacts → Calendar → Commute → synthesizes personalized context with gold trajectory API calls.
-
 ## Technology Stack
 
 - **Orchestration**: LangGraph with `StateGraph`
@@ -181,7 +208,18 @@ Example task: *"I need to meet with Dr. Hong Man on March 16th after my Deep Lea
 - **Environment A**: WorkBench pilot — validates SAS, CMAS, and DMAS on tool-heavy and sequential tasks
 - **Environment B**: BrowseComp-Plus-style fixed corpus — validates deep-research QA with fixed retrieval evidence
 - **Environment C**: Fin-RATE-style fixed corpus — validates finance QA, comparison, and synthesis over SEC-filing evidence
-- **Legacy/Pilot**: PCAB remains available for personalized context assembly experiments
+
+## Datasets
+
+The current evaluation suite focuses on three datasets that stress different parts of the routing problem:
+
+| Dataset | Source | What It Tests | Current Slice |
+|---------|--------|---------------|---------------|
+| **WorkBench** | [`olly-styles/WorkBench`](https://github.com/olly-styles/WorkBench) | Realistic workplace tasks over sandboxed tools, including email, calendar, CRM, analytics, and project-management actions. | 50-task stratified pilot in `benchmarks/workbench_50_queries.csv` |
+| **BrowseComp-Plus** | [`texttron/BrowseComp-Plus`](https://github.com/texttron/BrowseComp-Plus) and the BrowseComp-Plus paper | Deep-research QA over a fixed corpus where retrieval evidence must support multi-hop factual answers. | 30-task converted fixed-corpus pilot under `data/converted/browsecomp_plus_pilot30/` |
+| **Fin-RATE** | [`jyd777/Fin-RATE`](https://github.com/jyd777/Fin-RATE) and the Fin-RATE paper | Financial QA over SEC filings, including numeric extraction, comparison, and synthesis across filing evidence. | 30-task converted fixed-corpus pilot under `data/converted/finrate_pilot30/` |
+
+WorkBench evaluates whether architecture routing helps in tool-use settings with side effects. BrowseComp-Plus and Fin-RATE evaluate whether SAS, CMAS, or DMAS produces better answers when all architectures are constrained to the same local evidence pool.
 
 ## Metrics
 
@@ -275,20 +313,12 @@ The latest aggregate outputs are under `results/llm_fixed_corpus_analysis/`, inc
 
 ## Learned router (hybrid: LLM features + sklearn)
 
-1. Run any benchmark that writes three architectures per task (PCAB, WorkBench, BrowseComp, Fin-RATE fixtures).
+1. Run any benchmark that writes three architectures per task (WorkBench, BrowseComp-Plus, or Fin-RATE).
 2. `python scripts/export_router_training_rows.py results/<run>.json -o results/train.csv`
 3. `pip install -e ".[router-ml]"` then `python scripts/train_router_from_regret.py results/train.csv -o models/router_policy.joblib`
 4. `export ROUTER_LEARNED_MODEL_PATH=models/router_policy.joblib` — routing uses the multinomial logistic model before threshold fallbacks. Optional: `ROUTER_LEARNED_MIN_CONF=0.45` to abstain (falls through to thresholds).
 
 Optional DSPy baseline check: `python scripts/router_dspy_baseline.py`
-
-## Midstage report alignment
-
-If you add `Midstage_report.pdf` to the repo (or point collaborators to it), keep these **code anchors** in sync with the write-up:
-
-- **Composite oracle / regret:** defaults in [`evaluate_regret.py`](evaluate_regret.py) (`RegretEvaluator`: `accuracy_weight=0.50`, `latency_weight=0.40`, `token_weight=0.10`).
-- **Routing thresholds:** [`route_task`](src/dynamic_routing/router.py) (tool-heavy / depth → SAS; parallelism bands → DMAS vs CMAS).
-- **Extended routing features (for supervised policy):** [`RoutingMetadata`](src/dynamic_routing/vllm_integration.py).
 
 ## References
 
