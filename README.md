@@ -70,7 +70,7 @@ $$
 For fair task-level comparison, latency and token costs are max-normalized against the worst-performing architecture for that query. Formally, the router seeks to approximate the Oracle by maximizing expected Composite Reward over the task space:
 
 $$
-\hat{a}(q) \approx O(q) =
+O(q) =
 \arg\max_{a \in \{\text{SAS}, \text{CMAS}, \text{DMAS}\}} R(a, q)
 $$
 
