@@ -24,6 +24,9 @@ build/
 .env
 .env.local
 
+# Local course/report drafts
+AAI800_final_report.md
+
 # PCAB benchmark database (generated)
 pcab_environment.db
 
