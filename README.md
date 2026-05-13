@@ -1,6 +1,10 @@
 # Dynamic Architecture Router for Agentic Systems
 
-A predictive meta-agent that routes incoming tasks to the optimal architectural topology (Single-Agent, Centralized MAS, or Decentralized MAS) to minimize coordination tax while maximizing accuracy.
+**Research prototype for empirically testing agentic scaling laws and coordination overhead.**
+
+This repository studies whether incoming tasks can be routed to an appropriate architectural topology (Single-Agent, Centralized MAS, or Decentralized MAS) to minimize coordination tax while preserving accuracy.
+
+> **Disclaimer:** The primary objective of this work is to empirically validate ideas from *Towards a Science of Scaling Agent Systems*, especially the relationship between agentic scaling, coordination overhead, latency, token cost, and task success. The proposed router should be read as a theoretical framework and experimental harness for architectural selection, not as a production-grade router optimized for concurrent, high-throughput request handling.
 
 ## Overview
 
