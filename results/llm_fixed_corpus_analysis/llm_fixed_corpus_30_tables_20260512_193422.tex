@@ -1,0 +1,43 @@
+\begin{table}[htbp]
+\caption{LLM-Backed Fixed-Corpus Performance \& Primary Failure Modes}
+\begin{center}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{|l|l|c|c|p{4cm}|}
+\hline
+\textbf{Benchmark} & \textbf{Arch.} & \textbf{Avg. Acc.} & \textbf{Oracle Wins} & \textbf{Primary Failure Mode / Note} \\
+\hline
+\multirow{3}{*}{\textbf{BrowseComp-Plus}} & SAS & 0.9333 & 25 (83.3\%) & Imperfect scores (unlabeled) (2) \\
+ & CMAS & 0.9333 & 0 (0.0\%) & Specification Failure: Requirement Miss (2) \\
+ & DMAS & 0.9333 & 5 (16.7\%) & Specification Failure: Requirement Miss (1) \\
+\hline
+\multirow{3}{*}{\textbf{Fin-RATE}} & SAS & 0.6167 & 22 (73.3\%) & Imperfect scores (unlabeled) (17) \\
+ & CMAS & 0.6667 & 0 (0.0\%) & Specification Failure: Requirement Miss (16) \\
+ & DMAS & 0.7500 & 8 (26.7\%) & Specification Failure: Requirement Miss (12) \\
+\hline
+\end{tabular}%
+}
+\label{tab:llm_architecture_performance}
+\end{center}
+\end{table}
+
+\begin{table}[htbp]
+\caption{LLM-Backed Fixed-Corpus Router Evaluation (Regret Metrics)}
+\begin{center}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{|l|l|c|c|c|c|}
+\hline
+\textbf{Dataset} & \textbf{Router Policy} & \textbf{Perfect Routing} & \textbf{Acc. Regret} & \textbf{Lat. Regret(s)} & \textbf{Tok. Regret} \\
+\hline
+\multirow{3}{*}{\textbf{BrowseComp-Plus}} & Rule/SAS (Base) & 25 / 30 (83.3\%) & 0.0333 & 0.2721 & 256.73 \\
+ & LR (Balanced) & 5 / 30 (16.7\%) & 0.0333 & 2.1631 & 28787.07 \\
+ & LR (Unweighted) & 25 / 30 (83.3\%) & 0.0333 & 0.2721 & 256.73 \\
+\hline
+\multirow{3}{*}{\textbf{Fin-RATE}} & Rule/SAS (Base) & 22 / 30 (73.3\%) & 0.1500 & 0.0000 & 0.00 \\
+ & LR (Balanced) & 8 / 30 (26.7\%) & 0.0333 & 2.9078 & 4048.10 \\
+ & LR (Unweighted) & 22 / 30 (73.3\%) & 0.1500 & 0.0000 & 0.00 \\
+\hline
+\end{tabular}%
+}
+\label{tab:llm_router_regret}
+\end{center}
+\end{table}

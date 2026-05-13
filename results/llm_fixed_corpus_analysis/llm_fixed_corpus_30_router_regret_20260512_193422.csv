@@ -1,0 +1,7 @@
+dataset,router_policy,tasks,perfect_routing_count,perfect_routing_rate,avg_accuracy_regret,avg_latency_regret_sec,avg_token_regret,prediction_counts
+BrowseComp-Plus,Rule/SAS (Base),30,25,0.8333,0.0333,0.2721,256.73,"{""Single-Agent System"": 30}"
+BrowseComp-Plus,LR (Balanced),30,5,0.1667,0.0333,2.1631,28787.07,"{""Decentralized MAS"": 30}"
+BrowseComp-Plus,LR (Unweighted),30,25,0.8333,0.0333,0.2721,256.73,"{""Single-Agent System"": 30}"
+Fin-RATE,Rule/SAS (Base),30,22,0.7333,0.15,0.0,0.0,"{""Single-Agent System"": 30}"
+Fin-RATE,LR (Balanced),30,8,0.2667,0.0333,2.9078,4048.1,"{""Decentralized MAS"": 30}"
+Fin-RATE,LR (Unweighted),30,22,0.7333,0.15,0.0,0.0,"{""Single-Agent System"": 30}"

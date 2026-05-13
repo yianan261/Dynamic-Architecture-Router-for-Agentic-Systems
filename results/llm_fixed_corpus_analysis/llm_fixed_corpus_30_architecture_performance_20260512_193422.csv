@@ -1,0 +1,7 @@
+benchmark,architecture,architecture_full,tasks,avg_accuracy,avg_latency_sec,avg_tokens,oracle_wins,oracle_win_rate,perfect_count,primary_failure_mode_note
+BrowseComp-Plus,SAS,Single-Agent System,30,0.9333,5.6084,55655.7,25,0.8333,28,Imperfect scores (unlabeled) (2)
+BrowseComp-Plus,CMAS,Centralized MAS,30,0.9333,11.9257,89770.63,0,0.0,28,Specification Failure: Requirement Miss (2)
+BrowseComp-Plus,DMAS,Decentralized MAS,30,0.9333,7.3988,80256.5,5,0.1667,28,Specification Failure: Requirement Miss (1)
+Fin-RATE,SAS,Single-Agent System,30,0.6167,5.9165,12125.03,22,0.7333,13,Imperfect scores (unlabeled) (17)
+Fin-RATE,CMAS,Centralized MAS,30,0.6667,14.4186,22210.53,0,0.0,13,Specification Failure: Requirement Miss (16)
+Fin-RATE,DMAS,Decentralized MAS,30,0.75,9.884,18144.17,8,0.2667,16,Specification Failure: Requirement Miss (12)

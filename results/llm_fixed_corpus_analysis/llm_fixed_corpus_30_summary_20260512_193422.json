@@ -1,0 +1,105 @@
+{
+  "generated_at": "20260512_193422",
+  "sources": {
+    "BrowseComp-Plus": "results/browsecomp/sweeps/llm_browsecomp_plus_30_fixed_corpus_20260512_190544.json",
+    "Fin-RATE": "results/finrate/converted/llm_finrate_30_fixed_corpus_20260512_192436.json"
+  },
+  "benchmarks": {
+    "BrowseComp-Plus": {
+      "task_count": 30,
+      "oracle_counts": {
+        "Single-Agent System": 25,
+        "Decentralized MAS": 5
+      },
+      "architectures": {
+        "Single-Agent System": {
+          "benchmark": "BrowseComp-Plus",
+          "architecture": "SAS",
+          "architecture_full": "Single-Agent System",
+          "tasks": 30,
+          "avg_accuracy": 0.9333,
+          "avg_latency_sec": 5.6084,
+          "avg_tokens": 55655.7,
+          "oracle_wins": 25,
+          "oracle_win_rate": 0.8333,
+          "perfect_count": 28,
+          "primary_failure_mode_note": "Imperfect scores (unlabeled) (2)"
+        },
+        "Centralized MAS": {
+          "benchmark": "BrowseComp-Plus",
+          "architecture": "CMAS",
+          "architecture_full": "Centralized MAS",
+          "tasks": 30,
+          "avg_accuracy": 0.9333,
+          "avg_latency_sec": 11.9257,
+          "avg_tokens": 89770.63,
+          "oracle_wins": 0,
+          "oracle_win_rate": 0.0,
+          "perfect_count": 28,
+          "primary_failure_mode_note": "Specification Failure: Requirement Miss (2)"
+        },
+        "Decentralized MAS": {
+          "benchmark": "BrowseComp-Plus",
+          "architecture": "DMAS",
+          "architecture_full": "Decentralized MAS",
+          "tasks": 30,
+          "avg_accuracy": 0.9333,
+          "avg_latency_sec": 7.3988,
+          "avg_tokens": 80256.5,
+          "oracle_wins": 5,
+          "oracle_win_rate": 0.1667,
+          "perfect_count": 28,
+          "primary_failure_mode_note": "Specification Failure: Requirement Miss (1)"
+        }
+      }
+    },
+    "Fin-RATE": {
+      "task_count": 30,
+      "oracle_counts": {
+        "Decentralized MAS": 8,
+        "Single-Agent System": 22
+      },
+      "architectures": {
+        "Single-Agent System": {
+          "benchmark": "Fin-RATE",
+          "architecture": "SAS",
+          "architecture_full": "Single-Agent System",
+          "tasks": 30,
+          "avg_accuracy": 0.6167,
+          "avg_latency_sec": 5.9165,
+          "avg_tokens": 12125.03,
+          "oracle_wins": 22,
+          "oracle_win_rate": 0.7333,
+          "perfect_count": 13,
+          "primary_failure_mode_note": "Imperfect scores (unlabeled) (17)"
+        },
+        "Centralized MAS": {
+          "benchmark": "Fin-RATE",
+          "architecture": "CMAS",
+          "architecture_full": "Centralized MAS",
+          "tasks": 30,
+          "avg_accuracy": 0.6667,
+          "avg_latency_sec": 14.4186,
+          "avg_tokens": 22210.53,
+          "oracle_wins": 0,
+          "oracle_win_rate": 0.0,
+          "perfect_count": 13,
+          "primary_failure_mode_note": "Specification Failure: Requirement Miss (16)"
+        },
+        "Decentralized MAS": {
+          "benchmark": "Fin-RATE",
+          "architecture": "DMAS",
+          "architecture_full": "Decentralized MAS",
+          "tasks": 30,
+          "avg_accuracy": 0.75,
+          "avg_latency_sec": 9.884,
+          "avg_tokens": 18144.17,
+          "oracle_wins": 8,
+          "oracle_win_rate": 0.2667,
+          "perfect_count": 16,
+          "primary_failure_mode_note": "Specification Failure: Requirement Miss (12)"
+        }
+      }
+    }
+  }
+}

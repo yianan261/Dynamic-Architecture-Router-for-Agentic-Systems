@@ -1,0 +1,27 @@
+benchmark,architecture,failure_label,count,percent_of_arch_records,failure_only_count,percent_of_failures
+BrowseComp-Plus,CMAS,No Semantic Failure / Correct,28,93.33,0,0
+BrowseComp-Plus,CMAS,Specification Failure: Requirement Miss,2,6.67,2,100.0
+BrowseComp-Plus,DMAS,No Semantic Failure / Correct,28,93.33,0,0
+BrowseComp-Plus,DMAS,Specification Failure: Requirement Miss,1,3.33,1,50.0
+BrowseComp-Plus,DMAS,Task Verification Failure: Incorrect Synthesis / Incomplete Aggregation,1,3.33,1,50.0
+BrowseComp-Plus,CMAS+DMAS,No Semantic Failure / Correct,56,93.33,0,0
+BrowseComp-Plus,CMAS+DMAS,Specification Failure: Requirement Miss,3,5.0,3,75.0
+BrowseComp-Plus,CMAS+DMAS,Task Verification Failure: Incorrect Synthesis / Incomplete Aggregation,1,1.67,1,25.0
+Fin-RATE,CMAS,Specification Failure: Requirement Miss,16,53.33,16,94.12
+Fin-RATE,CMAS,No Semantic Failure / Correct,13,43.33,0,0
+Fin-RATE,CMAS,Task Verification Failure: Incorrect Synthesis / Incomplete Aggregation,1,3.33,1,5.88
+Fin-RATE,DMAS,No Semantic Failure / Correct,16,53.33,0,0
+Fin-RATE,DMAS,Specification Failure: Requirement Miss,12,40.0,12,85.71
+Fin-RATE,DMAS,Task Verification Failure: Incorrect Synthesis / Incomplete Aggregation,2,6.67,2,14.29
+Fin-RATE,CMAS+DMAS,No Semantic Failure / Correct,29,48.33,0,0
+Fin-RATE,CMAS+DMAS,Specification Failure: Requirement Miss,28,46.67,28,90.32
+Fin-RATE,CMAS+DMAS,Task Verification Failure: Incorrect Synthesis / Incomplete Aggregation,3,5.0,3,9.68
+Combined,CMAS,No Semantic Failure / Correct,41,68.33,0,0
+Combined,CMAS,Specification Failure: Requirement Miss,18,30.0,18,94.74
+Combined,CMAS,Task Verification Failure: Incorrect Synthesis / Incomplete Aggregation,1,1.67,1,5.26
+Combined,DMAS,No Semantic Failure / Correct,44,73.33,0,0
+Combined,DMAS,Specification Failure: Requirement Miss,13,21.67,13,81.25
+Combined,DMAS,Task Verification Failure: Incorrect Synthesis / Incomplete Aggregation,3,5.0,3,18.75
+Combined,CMAS+DMAS,No Semantic Failure / Correct,85,70.83,0,0
+Combined,CMAS+DMAS,Specification Failure: Requirement Miss,31,25.83,31,88.57
+Combined,CMAS+DMAS,Task Verification Failure: Incorrect Synthesis / Incomplete Aggregation,4,3.33,4,11.43
