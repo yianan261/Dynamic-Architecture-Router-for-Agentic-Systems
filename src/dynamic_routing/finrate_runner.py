@@ -21,7 +21,7 @@ import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 
 FINRATE_ALLOWED_JUDGE_SCORES = (0.0, 0.5, 1.0)
@@ -175,6 +175,230 @@ def run_finrate_dmas_offline(
     }
 
 
+def build_finrate_local_search_tool(
+    chunks: list[dict[str, Any]],
+    doc_ids: list[str] | None = None,
+):
+    from langchain_core.tools import tool
+
+    @tool
+    def local_search(
+        query: Annotated[str, "Search query over the fixed Fin-RATE corpus."],
+        top_k: Annotated[int, "Number of chunks to return"] = 5,
+    ) -> str:
+        """Retrieve SEC-style chunks from the fixed local Fin-RATE corpus."""
+        k = max(1, min(int(top_k or 5), 12))
+        ctx = retrieve_context(query, chunks, top_n=k, doc_ids=doc_ids)
+        return ctx[:6000] if ctx else "NO_CONTEXT"
+
+    return local_search
+
+
+def _invoke_finrate_react_agent(
+    question: str,
+    chunks: list[dict[str, Any]],
+    *,
+    mode: str,
+    system_prompt: str,
+    doc_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    from langchain.agents import create_agent
+    from langchain_core.messages import HumanMessage
+
+    from dynamic_routing.chat_models import bind_tools_safely, get_worker_chat_model
+    from dynamic_routing.workbench_runner import _aggregate_tokens, _final_text
+
+    tool = build_finrate_local_search_tool(chunks, doc_ids=doc_ids)
+    llm = bind_tools_safely(get_worker_chat_model(temperature=0.1), [tool])
+    agent = create_agent(model=llm, tools=[tool], system_prompt=system_prompt)
+    t0 = time.perf_counter()
+    err = ""
+    try:
+        result = agent.invoke(
+            {"messages": [HumanMessage(content=question)]},
+            config={"recursion_limit": 24},
+        )
+    except Exception as e:
+        err = str(e)
+        return {
+            "answer": "",
+            "latency_sec": time.perf_counter() - t0,
+            "total_tokens": 0,
+            "error": err,
+            "execution_path": [f"{mode}_error"],
+            "trace": {"mode": mode, "query": question[:400], "doc_ids": doc_ids or [], "agent_error": err[:300]},
+        }
+    messages = result.get("messages", [])
+    answer = _final_text(messages)
+    return {
+        "answer": answer,
+        "latency_sec": time.perf_counter() - t0,
+        "total_tokens": _aggregate_tokens(messages),
+        "error": err,
+        "execution_path": [f"{mode}_tool_loop", "finish"],
+        "trace": {
+            "mode": mode,
+            "query": question[:400],
+            "doc_ids": doc_ids or [],
+            "message_count": len(messages),
+            "final_preview": answer[:500],
+        },
+    }
+
+
+def _finrate_llm_merge(prompt: str) -> tuple[str, int]:
+    from dynamic_routing.chat_models import get_worker_chat_model
+    from dynamic_routing.workbench_runner import _aggregate_tokens
+
+    resp = get_worker_chat_model(temperature=0.0).invoke(prompt)
+    text = resp.content if isinstance(resp.content, str) else str(resp.content)
+    return text, _aggregate_tokens([resp])
+
+
+def run_finrate_sas_llm(
+    question: str,
+    chunks: list[dict[str, Any]],
+    doc_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    return _invoke_finrate_react_agent(
+        question,
+        chunks,
+        mode="sas_llm",
+        doc_ids=doc_ids,
+        system_prompt=(
+            "You are a financial QA agent. Use only local_search over the fixed Fin-RATE corpus. "
+            "Extract relevant entities, values, dates, and comparison direction. Cite supporting evidence briefly."
+        ),
+    )
+
+
+def run_finrate_cmas_llm(
+    question: str,
+    chunks: list[dict[str, Any]],
+    doc_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    t0 = time.perf_counter()
+    try:
+        evidence = _invoke_finrate_react_agent(
+            question,
+            chunks,
+            mode="cmas_llm_evidence_worker",
+            doc_ids=doc_ids,
+            system_prompt=(
+                "You are the evidence extraction worker in a centralized financial MAS. "
+                "Use local_search only. Extract all relevant numeric values, entities, dates, and source clues."
+            ),
+        )
+        reasoning = _invoke_finrate_react_agent(
+            question,
+            chunks,
+            mode="cmas_llm_reasoning_worker",
+            doc_ids=doc_ids,
+            system_prompt=(
+                "You are the financial reasoning worker in a centralized MAS. "
+                "Use local_search only. Focus on calculations, comparisons, trends, and missing caveats."
+            ),
+        )
+        merged, merge_tokens = _finrate_llm_merge(
+            "You are the CMAS supervisor for a Fin-RATE task. Produce the final answer using only the worker reports. "
+            "Preserve key numbers, entities, years, and comparison direction.\n\n"
+            f"Question: {question}\n\nEvidence worker:\n{evidence.get('answer', '')[:3000]}\n\n"
+            f"Reasoning worker:\n{reasoning.get('answer', '')[:3000]}\n\nFinal answer:"
+        )
+        total_tokens = int(evidence.get("total_tokens") or 0) + int(reasoning.get("total_tokens") or 0) + merge_tokens
+    except Exception as e:
+        err = str(e)
+        return {
+            "answer": "",
+            "latency_sec": time.perf_counter() - t0,
+            "total_tokens": 0,
+            "error": err,
+            "execution_path": ["cmas_llm_error"],
+            "trace": {"mode": "cmas_llm", "query": question[:400], "doc_ids": doc_ids or [], "agent_error": err[:300]},
+        }
+    return {
+        "answer": merged,
+        "latency_sec": time.perf_counter() - t0,
+        "total_tokens": total_tokens,
+        "error": "",
+        "execution_path": ["cmas_evidence_worker", "cmas_reasoning_worker", "cmas_supervisor_merge"],
+        "trace": {
+            "mode": "cmas_llm",
+            "doc_ids": doc_ids or [],
+            "dispatches": [
+                {"worker": "evidence_extractor", "final_preview": str(evidence.get("answer") or "")[:500]},
+                {"worker": "financial_reasoner", "final_preview": str(reasoning.get("answer") or "")[:500]},
+            ],
+            "merge_strategy": "llm_supervisor_synthesis",
+            "final_preview": merged[:500],
+        },
+    }
+
+
+def run_finrate_dmas_llm(
+    question: str,
+    chunks: list[dict[str, Any]],
+    doc_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    t0 = time.perf_counter()
+    q_short = " ".join(question.split()[:10])
+    peer_specs = [
+        ("peer_full_question", question, "Analyze the full question and cite evidence."),
+        ("peer_short_query", q_short, "Use a shortened retrieval plan, then reason from the evidence."),
+    ]
+    try:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [
+                pool.submit(
+                    _invoke_finrate_react_agent,
+                    peer_query,
+                    chunks,
+                    mode=f"dmas_llm_{peer}",
+                    doc_ids=doc_ids,
+                    system_prompt=(
+                        "You are an independent peer in a decentralized financial MAS. "
+                        f"{guidance} Use only local_search over the fixed corpus."
+                    ),
+                )
+                for peer, peer_query, guidance in peer_specs
+            ]
+            reports = [f.result() for f in futures]
+        merged, merge_tokens = _finrate_llm_merge(
+            "You are the DMAS consensus merger for a Fin-RATE task. Compare the peer reports, resolve conflicts, "
+            "and produce one final answer with the key entities, numbers, dates, and comparison direction.\n\n"
+            f"Question: {question}\n\nPeer A:\n{reports[0].get('answer', '')[:3000]}\n\n"
+            f"Peer B:\n{reports[1].get('answer', '')[:3000]}\n\nFinal answer:"
+        )
+        total_tokens = sum(int(r.get("total_tokens") or 0) for r in reports) + merge_tokens
+    except Exception as e:
+        err = str(e)
+        return {
+            "answer": "",
+            "latency_sec": time.perf_counter() - t0,
+            "total_tokens": 0,
+            "error": err,
+            "execution_path": ["dmas_llm_error"],
+            "trace": {"mode": "dmas_llm", "query": question[:400], "doc_ids": doc_ids or [], "agent_error": err[:300]},
+        }
+    return {
+        "answer": merged,
+        "latency_sec": time.perf_counter() - t0,
+        "total_tokens": total_tokens,
+        "error": "",
+        "execution_path": ["dmas_peer_full", "dmas_peer_short", "dmas_consensus_merge"],
+        "trace": {
+            "mode": "dmas_llm",
+            "doc_ids": doc_ids or [],
+            "peer_reports": [
+                {"peer": peer_specs[i][0], "query": peer_specs[i][1][:240], "final_preview": str(reports[i].get("answer") or "")[:500]}
+                for i in range(len(reports))
+            ],
+            "merge_strategy": "llm_consensus_synthesis",
+            "final_preview": merged[:500],
+        },
+    }
+
+
 def _extract_json_object(text: str) -> dict[str, Any] | None:
     text = text.strip()
     if not text:
@@ -319,8 +543,16 @@ def run_finrate_architecture(
     chunks: list[dict[str, Any]],
     architecture: str,
     doc_ids: list[str] | None = None,
+    *,
+    use_llm: bool = False,
 ) -> dict[str, Any]:
     a = architecture.strip().lower()
+    if use_llm and a in ("sas", "single-agent system"):
+        return run_finrate_sas_llm(question, chunks, doc_ids=doc_ids)
+    if use_llm and a in ("cmas", "centralized mas"):
+        return run_finrate_cmas_llm(question, chunks, doc_ids=doc_ids)
+    if use_llm and a in ("dmas", "decentralized mas"):
+        return run_finrate_dmas_llm(question, chunks, doc_ids=doc_ids)
     if a in ("sas", "single-agent system"):
         return run_finrate_sas_offline(question, chunks, doc_ids=doc_ids)
     if a in ("cmas", "centralized mas"):

@@ -122,6 +122,7 @@ def main() -> None:
     ap.add_argument("--seed", type=int, default=42, help="Random seed for --sample")
     ap.add_argument("--limit", type=int, default=0, help="Max queries (0=all)")
     ap.add_argument("--use-llm-sas", action="store_true", help="Use ReAct+local_search for SAS only (needs LLM backend)")
+    ap.add_argument("--use-llm-all", action="store_true", help="Use LLM-backed fixed-corpus agents for SAS, CMAS, and DMAS")
     ap.add_argument("-o", "--output", type=str, default="benchmark_browsecomp_results.json", help="Stem under results/")
     args = ap.parse_args()
 
@@ -161,7 +162,7 @@ def main() -> None:
                 q,
                 corpus,
                 internal,
-                use_llm=args.use_llm_sas,
+                use_llm=bool(args.use_llm_all or (args.use_llm_sas and internal == "sas")),
                 doc_ids=row.get("doc_ids") or None,
             )
             lat = float(out.get("latency_sec") or 0.0)
@@ -240,6 +241,11 @@ def main() -> None:
             "corpus": str(args.corpus.resolve()),
             "judge_backend_last": judge_backend_global,
             "use_llm_sas": bool(args.use_llm_sas),
+            "use_llm_all": bool(args.use_llm_all),
+            "llm_backend": os.environ.get("LLM_BACKEND", "vllm"),
+            "openai_worker_model": os.environ.get("OPENAI_WORKER_MODEL", "gpt-5.4-mini"),
+            "vllm_worker_model": os.environ.get("VLLM_WORKER_MODEL", "meta-llama/Llama-3.1-8B-Instruct"),
+            "google_worker_model": os.environ.get("GOOGLE_WORKER_MODEL", "gemini-3.1-flash-lite-preview"),
             "note": (
                 "Integrate official BrowseComp-Plus decrypt + indexes per upstream README when running full eval. "
                 "Failure diagnostics are a project-scoped MAST-inspired diagnostic subset: "

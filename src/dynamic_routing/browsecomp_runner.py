@@ -19,7 +19,7 @@ import logging
 import os
 import re
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor
 from typing import Any, cast
 
 from langchain_core.messages import HumanMessage
@@ -277,22 +277,22 @@ def judge_browsecomp_answer(query: str, answer: str, gold: str) -> tuple[float, 
     return score, f"{label}_uncertain_no_llm"
 
 
-def run_browsecomp_sas_llm(query: str, corpus: BrowseCompCorpus) -> dict[str, Any]:
+def _invoke_browsecomp_react_agent(
+    query: str,
+    corpus: BrowseCompCorpus,
+    *,
+    mode: str,
+    system_prompt: str,
+    doc_ids: list[str] | None = None,
+) -> dict[str, Any]:
     from langchain.agents import create_agent
 
     from dynamic_routing.chat_models import bind_tools_safely, get_worker_chat_model
     from dynamic_routing.workbench_runner import _aggregate_tokens, _final_text
 
-    tool = build_local_search_tool(corpus)
+    tool = build_local_search_tool(corpus, allowed_doc_ids=doc_ids)
     llm = bind_tools_safely(get_worker_chat_model(temperature=0.1), [tool])
-    agent = create_agent(
-        model=llm,
-        tools=[tool],
-        system_prompt=(
-            "You answer using only the local_search tool and its passages. "
-            "Cite doc ids briefly then state the final answer in one sentence."
-        ),
-    )
+    agent = create_agent(model=llm, tools=[tool], system_prompt=system_prompt)
     t0 = time.perf_counter()
     err = ""
     try:
@@ -307,8 +307,8 @@ def run_browsecomp_sas_llm(query: str, corpus: BrowseCompCorpus) -> dict[str, An
             "latency_sec": time.perf_counter() - t0,
             "total_tokens": 0,
             "error": err,
-            "execution_path": ["sas_llm_error"],
-            "trace": {"mode": "sas_llm", "query": query, "agent_error": err[:300]},
+            "execution_path": [f"{mode}_error"],
+            "trace": {"mode": mode, "query": query, "doc_ids": doc_ids or [], "agent_error": err[:300]},
         }
     messages = result.get("messages", [])
     return {
@@ -316,12 +316,168 @@ def run_browsecomp_sas_llm(query: str, corpus: BrowseCompCorpus) -> dict[str, An
         "latency_sec": time.perf_counter() - t0,
         "total_tokens": _aggregate_tokens(messages),
         "error": err,
-        "execution_path": ["sas_llm_tool_loop", "finish"],
+        "execution_path": [f"{mode}_tool_loop", "finish"],
         "trace": {
-            "mode": "sas_llm",
+            "mode": mode,
             "query": query,
+            "doc_ids": doc_ids or [],
             "message_count": len(messages),
             "final_preview": _final_text(messages)[:500],
+        },
+    }
+
+
+def _llm_merge(prompt: str) -> tuple[str, int]:
+    from dynamic_routing.chat_models import get_worker_chat_model
+    from dynamic_routing.workbench_runner import _aggregate_tokens
+
+    resp = get_worker_chat_model(temperature=0.0).invoke(prompt)
+    text = resp.content if isinstance(resp.content, str) else str(resp.content)
+    return text, _aggregate_tokens([resp])
+
+
+def run_browsecomp_sas_llm(
+    query: str,
+    corpus: BrowseCompCorpus,
+    doc_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    return _invoke_browsecomp_react_agent(
+        query,
+        corpus,
+        mode="sas_llm",
+        doc_ids=doc_ids,
+        system_prompt=(
+            "You answer using only the local_search tool and its passages. "
+            "Search once or twice as needed, cite doc ids briefly, then state the final answer."
+        ),
+    )
+
+
+def run_browsecomp_cmas_llm(
+    query: str,
+    corpus: BrowseCompCorpus,
+    doc_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    t0 = time.perf_counter()
+    err = ""
+    try:
+        direct = _invoke_browsecomp_react_agent(
+            query,
+            corpus,
+            mode="cmas_llm_direct_worker",
+            doc_ids=doc_ids,
+            system_prompt=(
+                "You are the direct-evidence worker in a centralized MAS. "
+                "Use local_search only, identify the strongest supporting passages, and cite doc ids."
+            ),
+        )
+        alt_query = " ".join(query.split()[: max(4, len(query.split()) // 2)])
+        alternate = _invoke_browsecomp_react_agent(
+            alt_query,
+            corpus,
+            mode="cmas_llm_alternate_worker",
+            doc_ids=doc_ids,
+            system_prompt=(
+                "You are the alternate-query worker in a centralized MAS. "
+                "Use local_search only, look for aliases, shortened phrasing, or missing evidence, and cite doc ids."
+            ),
+        )
+        merged, merge_tokens = _llm_merge(
+            "You are the CMAS supervisor. Synthesize a final answer using only the two worker reports. "
+            "Resolve disagreement conservatively and cite supporting doc ids.\n\n"
+            f"Question: {query}\n\nDirect worker report:\n{direct.get('final_answer', '')[:2500]}\n\n"
+            f"Alternate worker report:\n{alternate.get('final_answer', '')[:2500]}\n\nFinal answer:"
+        )
+        total_tokens = int(direct.get("total_tokens") or 0) + int(alternate.get("total_tokens") or 0) + merge_tokens
+    except Exception as e:
+        err = str(e)
+        return {
+            "final_answer": "",
+            "latency_sec": time.perf_counter() - t0,
+            "total_tokens": 0,
+            "error": err,
+            "execution_path": ["cmas_llm_error"],
+            "trace": {"mode": "cmas_llm", "query": query, "doc_ids": doc_ids or [], "agent_error": err[:300]},
+        }
+    return {
+        "final_answer": merged,
+        "latency_sec": time.perf_counter() - t0,
+        "total_tokens": total_tokens,
+        "error": err,
+        "execution_path": ["cmas_direct_worker", "cmas_alternate_worker", "cmas_supervisor_merge"],
+        "trace": {
+            "mode": "cmas_llm",
+            "doc_ids": doc_ids or [],
+            "dispatches": [
+                {"worker": "direct_evidence", "query": query, "final_preview": str(direct.get("final_answer") or "")[:500]},
+                {"worker": "alternate_query", "query": alt_query, "final_preview": str(alternate.get("final_answer") or "")[:500]},
+            ],
+            "merge_strategy": "llm_supervisor_synthesis",
+            "final_preview": merged[:500],
+        },
+    }
+
+
+def run_browsecomp_dmas_llm(
+    query: str,
+    corpus: BrowseCompCorpus,
+    doc_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    t0 = time.perf_counter()
+    q_alt = re.sub(r"\s+", " ", " ".join(reversed(query.split()[:12])))
+    peer_specs = [
+        ("peer_literal", query, "Use literal query terms and cite doc ids."),
+        ("peer_alternate", q_alt if q_alt != query else query + " background", "Use alternate wording and cite doc ids."),
+    ]
+    try:
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            futures = [
+                pool.submit(
+                    _invoke_browsecomp_react_agent,
+                    peer_query,
+                    corpus,
+                    mode=f"dmas_llm_{peer}",
+                    doc_ids=doc_ids,
+                    system_prompt=(
+                        "You are an independent peer in a decentralized MAS. "
+                        f"{guidance} Use only local_search and produce a concise evidence-backed answer."
+                    ),
+                )
+                for peer, peer_query, guidance in peer_specs
+            ]
+            reports = [f.result() for f in futures]
+        merged, merge_tokens = _llm_merge(
+            "You are the DMAS consensus merger. Compare the independent peer reports and produce one final answer. "
+            "Use only claims supported by the reports and cite doc ids.\n\n"
+            f"Question: {query}\n\nPeer A:\n{reports[0].get('final_answer', '')[:2500]}\n\n"
+            f"Peer B:\n{reports[1].get('final_answer', '')[:2500]}\n\nFinal answer:"
+        )
+        total_tokens = sum(int(r.get("total_tokens") or 0) for r in reports) + merge_tokens
+    except Exception as e:
+        err = str(e)
+        return {
+            "final_answer": "",
+            "latency_sec": time.perf_counter() - t0,
+            "total_tokens": 0,
+            "error": err,
+            "execution_path": ["dmas_llm_error"],
+            "trace": {"mode": "dmas_llm", "query": query, "doc_ids": doc_ids or [], "agent_error": err[:300]},
+        }
+    return {
+        "final_answer": merged,
+        "latency_sec": time.perf_counter() - t0,
+        "total_tokens": total_tokens,
+        "error": "",
+        "execution_path": ["dmas_peer_literal", "dmas_peer_alternate", "dmas_consensus_merge"],
+        "trace": {
+            "mode": "dmas_llm",
+            "doc_ids": doc_ids or [],
+            "peer_reports": [
+                {"peer": peer_specs[i][0], "query": peer_specs[i][1], "final_preview": str(reports[i].get("final_answer") or "")[:500]}
+                for i in range(len(reports))
+            ],
+            "merge_strategy": "llm_consensus_synthesis",
+            "final_preview": merged[:500],
         },
     }
 
@@ -336,7 +492,11 @@ def run_browsecomp_architecture(
 ) -> dict[str, Any]:
     arch = architecture.strip().lower()
     if use_llm and arch == "sas":
-        return run_browsecomp_sas_llm(query, corpus)
+        return run_browsecomp_sas_llm(query, corpus, doc_ids=doc_ids)
+    if use_llm and arch == "cmas":
+        return run_browsecomp_cmas_llm(query, corpus, doc_ids=doc_ids)
+    if use_llm and arch == "dmas":
+        return run_browsecomp_dmas_llm(query, corpus, doc_ids=doc_ids)
     if arch in ("sas", "single-agent system"):
         return run_browsecomp_sas_offline(query, corpus, doc_ids=doc_ids)
     if arch in ("cmas", "centralized mas"):

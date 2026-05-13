@@ -123,6 +123,7 @@ def main() -> None:
     ap.add_argument("--per-type", type=int, default=0, help="If >0, cap each task_type to N after shuffle")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--use-llm-all", action="store_true", help="Use LLM-backed fixed-corpus agents for SAS, CMAS, and DMAS")
     ap.add_argument("-o", "--output", type=str, default="benchmark_finrate_results.json")
     args = ap.parse_args()
 
@@ -155,7 +156,13 @@ def main() -> None:
             ("Centralized MAS", "cmas"),
             ("Decentralized MAS", "dmas"),
         ):
-            out = run_finrate_architecture(q, chunks, key, doc_ids=row.get("doc_ids") or None)
+            out = run_finrate_architecture(
+                q,
+                chunks,
+                key,
+                doc_ids=row.get("doc_ids") or None,
+                use_llm=args.use_llm_all,
+            )
             lat = float(out.get("latency_sec") or 0.0)
             judgment = judge_finrate_answer_detail(q, out["answer"], gold)
             sc = float(judgment["score"])
@@ -230,6 +237,11 @@ def main() -> None:
             "qa": str(args.qa.resolve()),
             "corpus": str(args.corpus.resolve()),
             "judge_backend_last": last_judge,
+            "use_llm_all": bool(args.use_llm_all),
+            "llm_backend": os.environ.get("LLM_BACKEND", "vllm"),
+            "openai_worker_model": os.environ.get("OPENAI_WORKER_MODEL", "gpt-5.4-mini"),
+            "vllm_worker_model": os.environ.get("VLLM_WORKER_MODEL", "meta-llama/Llama-3.1-8B-Instruct"),
+            "google_worker_model": os.environ.get("GOOGLE_WORKER_MODEL", "gemini-3.1-flash-lite-preview"),
             "note": (
                 "For official/custom Fin-RATE-style runs, first convert upstream qa/*.json and corpus/corpus.jsonl "
                 "to this runner's JSONL schema; official downloading/leaderboard formatting is intentionally not implemented here. "
